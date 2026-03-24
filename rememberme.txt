@@ -1,0 +1,30 @@
+# DICRON Scheduler Implementation Plan
+
+Round-robin scheduler with basic priorities.
+
+## What exists
+- struct task (pid, state, kernel_stack, context, page_table, next)
+- switch_context (asm, tested)
+- kthread_create / kthread_free / kstack_alloc
+- PIT at 1000Hz
+- Spinlocks with irqsave
+- Task states: RUNNING, READY, SLEEPING, DEAD
+
+## What to build
+1. Run queue — linked list of READY tasks, `current` pointer
+2. schedule() — pick next READY task, switch to it, idle task fallback
+3. Idle task — PID 0, hlt loop, always in run queue
+4. Timer preemption — PIT IRQ calls schedule() every 10 ticks (10ms timeslice)
+5. kwait() / kwake() — SLEEPING off run queue, wake puts back on
+6. kthread_exit() — mark DEAD, remove from run queue, call schedule()
+7. Keyboard integration — kio_getchar uses wait queue instead of busy-loop
+
+## Priorities
+- Basic priority levels (HIGH, NORMAL, LOW)
+- Boot tests get HIGH priority temporarily, removed after tests complete
+- Higher priority tasks get picked first from run queue
+
+## BootTestShow
+- Controlled by BOOT_TEST_SHOW define in ktest.h
+- True: show test suite names + summary
+- False: silent, only errors

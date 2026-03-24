@@ -1,0 +1,26 @@
+# Build artifacts
+build/
+*.o
+# Musl cross-compiler
+/musl/
+/musl-install/
+
+# Dependencies
+/Limine/
+
+# Output
+bin/
+iso_root/
+
+# QEMU logs
+qemu.log
+
+# Host tools
+tools/fontgen
+tools/fontgen.exe
+tools/fuzz_runner
+tools/fuzz_runner.exe
+
+# Editor files
+*.swp
+*~
