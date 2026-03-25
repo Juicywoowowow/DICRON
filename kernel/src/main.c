@@ -9,7 +9,6 @@
 #include "drivers/serial/com.h"
 #include "drivers/ps2/kbd.h"
 #include "drivers/timer/pit.h"
-#include "tests/ktest.h"
 #include <dicron/io.h>
 #include <dicron/log.h>
 #include <dicron/panic.h>
@@ -18,6 +17,12 @@
 #include <dicron/syscall.h>
 #include <dicron/process.h>
 #include <dicron/fs.h>
+#include <dicron/cpio.h>
+#include <generated/autoconf.h>
+
+#ifdef CONFIG_TESTS
+#include "tests/ktest.h"
+#endif
 
 /* Limine base revision */
 __attribute__((used, section(".limine_requests")))
@@ -38,6 +43,12 @@ static volatile struct limine_memmap_request memmap_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_hhdm_request hhdm_request = {
 	.id = LIMINE_HHDM_REQUEST_ID,
+	.revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_module_request module_request = {
+	.id = LIMINE_MODULE_REQUEST_ID,
 	.revision = 0
 };
 
@@ -103,28 +114,57 @@ void kmain(void)
 	     pmm_free_pages_count(), pmm_total_pages_count(),
 	     pmm_free_pages_count() * 4);
 
+#ifdef CONFIG_TESTS
 	/* boot test harness — run all tests before continuing */
 	int failures = ktest_run_all();
 	if (failures > 0)
 		kpanic("boot tests failed (%d failures) — halting\n", failures);
+#endif
 
 	/* all tests passed — now start the scheduler */
 	sched_init();
 
+#ifdef CONFIG_TESTS
 	/* post-boot tests — require live scheduler */
 	int post_failures = ktest_run_post();
 	if (post_failures > 0)
 		kpanic("post-boot tests failed (%d failures) — halting\n", post_failures);
+#endif
 
-	/* Launch first user process */
-	extern const uint8_t _binary_build_user_hello_musl_elf_start[];
-	extern const uint8_t _binary_build_user_hello_musl_elf_end[];
-	size_t user_elf_size = (size_t)(_binary_build_user_hello_musl_elf_end -
-					_binary_build_user_hello_musl_elf_start);
+	/* Extract initrd (cpio archive) from Limine module */
+	if (!module_request.response || module_request.response->module_count == 0)
+		kpanic("No initrd module provided by bootloader\n");
 
-	kio_printf("\nLaunching user process (hello.elf, %lu bytes)...\n", user_elf_size);
-	struct process *init_proc = process_create(
-		_binary_build_user_hello_musl_elf_start, user_elf_size);
+	struct limine_file *initrd = module_request.response->modules[0];
+	klog(KLOG_INFO, "initrd: %lu bytes at %p\n", initrd->size, initrd->address);
+
+	if (cpio_extract_all(initrd->address, initrd->size) != 0)
+		kpanic("Failed to extract initrd cpio archive\n");
+
+	/* Load /init from ramfs */
+	struct inode *init_inode = vfs_namei("/init");
+	if (!init_inode)
+		kpanic("No /init found in initrd\n");
+	if (!init_inode->f_op || !init_inode->f_op->read)
+		kpanic("/init is not a readable file\n");
+
+	/* Read the ELF into a buffer */
+	size_t user_elf_size = init_inode->size;
+	uint8_t *elf_buf = kmalloc(user_elf_size);
+	if (!elf_buf)
+		kpanic("Failed to allocate %lu bytes for /init\n", user_elf_size);
+
+	struct file init_file = {
+		.f_inode = init_inode,
+		.f_op = init_inode->f_op,
+		.f_pos = 0,
+	};
+	long nread = init_inode->f_op->read(&init_file, (char *)elf_buf, user_elf_size);
+	if (nread < 0 || (size_t)nread != user_elf_size)
+		kpanic("Failed to read /init (%ld bytes read)\n", nread);
+
+	kio_printf("\nLaunching /init (%lu bytes)...\n", user_elf_size);
+	struct process *init_proc = process_create(elf_buf, user_elf_size);
 	if (!init_proc)
 		kpanic("Failed to create init process\n");
 

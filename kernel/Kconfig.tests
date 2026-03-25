@@ -1,0 +1,117 @@
+menu "Tests"
+
+config TESTS
+	bool "Enable kernel test harness"
+	default y
+	help
+	  Master switch for all kernel tests.
+	  Disabling this removes ALL test code from the binary.
+
+if TESTS
+
+config TESTS_BOOT
+	bool "Boot-time tests"
+	default y
+	help
+	  Run tests before the scheduler starts.
+
+config TESTS_POST
+	bool "Post-boot tests (require scheduler)"
+	default y
+	help
+	  Run tests after the scheduler is live.
+
+menu "Boot test categories"
+	depends on TESTS_BOOT
+
+config TESTS_PMM
+	bool "PMM (physical memory) tests"
+	default y
+
+config TESTS_VMM
+	bool "VMM (virtual memory) tests"
+	default y
+
+config TESTS_KHEAP
+	bool "Kernel heap tests"
+	default y
+
+config TESTS_SLAB
+	bool "Slab allocator tests"
+	default y
+
+config TESTS_SCHED
+	bool "Scheduler tests"
+	default y
+
+config TESTS_MLFQ
+	bool "MLFQ tests"
+	default y
+
+config TESTS_FS
+	bool "Filesystem tests (VFS, ramfs, devfs)"
+	default y
+
+config TESTS_CPIO
+	bool "CPIO parser tests"
+	default y
+
+config TESTS_BLKDEV
+	bool "Block device tests"
+	default y
+
+config TESTS_EXT2
+	bool "ext2 structure tests"
+	default y
+	depends on EXT2
+
+config TESTS_STRING
+	bool "String/math/misc tests"
+	default y
+
+config TESTS_SPINLOCK
+	bool "Spinlock tests"
+	default y
+
+config TESTS_IDT
+	bool "IDT/interrupt tests"
+	default y
+
+config TESTS_TIMER
+	bool "Timer tests"
+	default y
+
+config TESTS_KSTACK
+	bool "Kernel stack tests"
+	default y
+
+config TESTS_ERROR
+	bool "Error recovery tests"
+	default y
+
+config TESTS_FUZZ
+	bool "Fuzz tests"
+	default y
+
+endmenu
+
+menu "Post-boot test categories"
+	depends on TESTS_POST
+
+config TESTS_POST_SCHED
+	bool "Post-boot scheduler tests"
+	default y
+
+config TESTS_POST_SYSCALL
+	bool "Post-boot syscall tests"
+	default y
+
+config TESTS_POST_ELF
+	bool "Post-boot ELF loader tests"
+	default y
+
+endmenu
+
+endif # TESTS
+
+endmenu

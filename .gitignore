@@ -21,6 +21,23 @@ tools/fontgen.exe
 tools/fuzz_runner
 tools/fuzz_runner.exe
 
+# Kconfig
+.config
+.config.old
+kernel/include/generated/
+
 # Editor files
 *.swp
 *~
+
+
+# Debug artifacts
+dicron.objdump
+dicron.sym
+
+
+# Plan docs
+filesystem.md
+implementation_plan.md
+userspace.md
+rememberme.txt

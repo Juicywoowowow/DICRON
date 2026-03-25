@@ -58,46 +58,86 @@ static struct file_operations ramfs_file_operations = {
 
 static struct dentry *ramfs_root_dentry;
 
-static struct inode *ramfs_lookup(struct inode *dir, const char *name)
+static struct inode_operations ramfs_dir_operations;
+
+static struct dentry *ramfs_find_dentry(struct inode *dir, const char *name)
 {
-	(void)dir;
-	struct dentry *d = ramfs_root_dentry->d_children;
+	struct dentry *parent_d = ramfs_root_dentry;
+
+	/* Walk dentry tree to find the dentry whose inode matches dir */
+	if (dir->i_private) {
+		parent_d = (struct dentry *)dir->i_private;
+	}
+
+	struct dentry *d = parent_d->d_children;
+	size_t nlen = strlen(name);
 	while (d) {
-		size_t nlen = strlen(name);
 		size_t dlen = strlen(d->name);
 		if (nlen == dlen && memcmp(name, d->name, nlen) == 0)
-			return d->d_inode;
+			return d;
 		d = d->d_siblings;
 	}
 	return NULL;
 }
 
+static struct inode *ramfs_lookup(struct inode *dir, const char *name)
+{
+	struct dentry *d = ramfs_find_dentry(dir, name);
+	return d ? d->d_inode : NULL;
+}
+
+static struct dentry *ramfs_get_dentry(struct inode *dir)
+{
+	if (dir->i_private)
+		return (struct dentry *)dir->i_private;
+	return ramfs_root_dentry;
+}
+
 static int ramfs_create(struct inode *dir, const char *name, int mode)
 {
-	if (ramfs_lookup(dir, name)) return -1; /* EEXIST via simple check */
-	
+	if (ramfs_lookup(dir, name)) return -1;
+
 	struct inode *i = inode_alloc();
 	if (!i) return -1;
-	
+
 	i->mode = S_IFREG | (uint32_t)mode;
 	i->f_op = &ramfs_file_operations;
-	
+
 	struct ramfs_inode_info *info = kzalloc(sizeof(struct ramfs_inode_info));
 	if (!info) { kfree(i); return -1; }
 	i->i_private = info;
-	
-	struct dentry *d = dentry_alloc(name, ramfs_root_dentry);
+
+	struct dentry *d = dentry_alloc(name, ramfs_get_dentry(dir));
 	if (!d) { kfree(info); kfree(i); return -1; }
-	
+
 	d->d_inode = i;
-	
+
+	return 0;
+}
+
+static int ramfs_mkdir(struct inode *dir, const char *name, int mode)
+{
+	if (ramfs_lookup(dir, name)) return -1;
+
+	struct inode *i = inode_alloc();
+	if (!i) return -1;
+
+	i->mode = S_IFDIR | (uint32_t)mode;
+	i->i_op = &ramfs_dir_operations;
+
+	struct dentry *d = dentry_alloc(name, ramfs_get_dentry(dir));
+	if (!d) { kfree(i); return -1; }
+
+	d->d_inode = i;
+	i->i_private = d; /* dir inodes point to their dentry for child lookup */
+
 	return 0;
 }
 
 static struct inode_operations ramfs_dir_operations = {
 	.lookup = ramfs_lookup,
 	.create = ramfs_create,
-	.mkdir = NULL,
+	.mkdir = ramfs_mkdir,
 };
 
 void ramfs_init(void)
@@ -106,9 +146,10 @@ void ramfs_init(void)
 	if (!root) return;
 	root->mode = S_IFDIR | 0755;
 	root->i_op = &ramfs_dir_operations;
-	
+
 	ramfs_root_dentry = dentry_alloc("/", NULL);
 	ramfs_root_dentry->d_inode = root;
-	
+	root->i_private = ramfs_root_dentry;
+
 	vfs_mount_root(root);
 }

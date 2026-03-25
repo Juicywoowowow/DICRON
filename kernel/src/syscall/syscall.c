@@ -14,8 +14,6 @@
  *   4. All args are treated as untrusted
  */
 
-#define WRITE_MAX  (1024 * 1024)   /* 1 MiB max per write */
-
 typedef long (*syscall_fn_t)(long, long, long, long, long, long);
 
 static syscall_fn_t syscall_table[SYSCALL_MAX];
@@ -28,6 +26,7 @@ extern long sys_close(long, long, long, long, long, long);
 extern long sys_readv(long, long, long, long, long, long);
 extern long sys_writev(long, long, long, long, long, long);
 extern long sys_ioctl(long, long, long, long, long, long);
+extern long sys_openat(long, long, long, long, long, long);
 extern long sys_gettimeofday(long, long, long, long, long, long);
 extern long sys_prlimit64(long, long, long, long, long, long);
 
@@ -79,27 +78,27 @@ void syscall_table_init(void)
 	register_syscall(__NR_ioctl,           sys_ioctl);
 	register_syscall(__NR_readv,           sys_readv);
 	register_syscall(__NR_writev,          sys_writev);
+	register_syscall(__NR_openat,          sys_openat);
 
-	/* Process lifecycle */
+	/* Process */
 	register_syscall(__NR_exit,            sys_exit);
 	register_syscall(__NR_exit_group,      sys_exit_group);
 	register_syscall(__NR_getpid,          sys_getpid);
+
+	/* Scheduler */
 	register_syscall(__NR_sched_yield,     sys_sched_yield);
-	register_syscall(__NR_gettimeofday,    sys_gettimeofday);
-	register_syscall(__NR_prlimit64,       sys_prlimit64);
-	register_syscall(__NR_mmap,            sys_mmap);
-	register_syscall(__NR_munmap,          sys_munmap);
 
 	/* Memory */
 	register_syscall(__NR_brk,             sys_brk);
+	register_syscall(__NR_mmap,            sys_mmap);
+	register_syscall(__NR_munmap,          sys_munmap);
 
 	/* Info / Arch */
 	register_syscall(__NR_uname,           sys_uname);
 	register_syscall(__NR_arch_prctl,      sys_arch_prctl);
 	register_syscall(__NR_set_tid_address, sys_set_tid_address);
-
-	/* Scheduler */
-	register_syscall(__NR_sched_yield,     sys_sched_yield);
+	register_syscall(__NR_gettimeofday,    sys_gettimeofday);
+	register_syscall(__NR_prlimit64,       sys_prlimit64);
 }
 
 /* --- Dispatch --- */

@@ -1,0 +1,27 @@
+menu "Drivers"
+
+config SERIAL
+	bool "Serial port (COM1)"
+	default y
+
+config PS2_KBD
+	bool "PS/2 keyboard"
+	default y
+
+config PIT
+	bool "PIT timer"
+	default y
+
+config EXT2
+	bool "ext2 filesystem driver"
+	default y
+	help
+	  Read-only ext2 filesystem support via ramdisk block device.
+
+config RAMDISK
+	bool "RAM block device"
+	default y
+	help
+	  Memory-backed block device for loading filesystem images.
+
+endmenu

@@ -2,53 +2,179 @@ CC      := gcc
 AS      := nasm
 LD      := ld
 
+BUILD_DIR := build
+BIN_DIR   := bin
+
+# ── Kconfig integration ──
+# Include .config if it exists (CONFIG_xxx=y variables)
+-include .config
+
 CFLAGS  := -std=gnu11 -Wall -Wextra -Werror \
            -Wconversion -Wsign-conversion \
            -ffreestanding -fno-stack-protector -fno-pic -fno-pie \
            -mcmodel=kernel -mno-red-zone -mno-sse -mno-mmx -mno-sse2 \
-           -I kernel/include -I kernel/src
+           -I kernel/include -I kernel/include/generated -I kernel/src
 
 LDFLAGS := -nostdlib -static -T kernel/linker.lds
 ASFLAGS := -f elf64
 
-# --- sources ---
-C_SRCS  := $(shell find kernel/src -name '*.c')
+# ── Core sources (always built) ──
+CORE_SRCS := $(shell find kernel/src -maxdepth 1 -name '*.c')
+CORE_SRCS += $(shell find kernel/src/arch -name '*.c')
+CORE_SRCS += $(shell find kernel/src/console -name '*.c')
+CORE_SRCS += $(shell find kernel/src/fs -name '*.c')
+CORE_SRCS += $(shell find kernel/src/io -name '*.c')
+CORE_SRCS += $(shell find kernel/src/lib -name '*.c')
+CORE_SRCS += $(shell find kernel/src/mm -name '*.c')
+CORE_SRCS += $(shell find kernel/src/proc -name '*.c')
+CORE_SRCS += $(shell find kernel/src/sched -name '*.c')
+CORE_SRCS += $(shell find kernel/src/syscall -name '*.c')
+
 A_SRCS  := $(shell find kernel/src -name '*.asm')
 
-BUILD_DIR := build
-BIN_DIR   := bin
+# ── Drivers (conditional) ──
+# Driver registry is always built
+CORE_SRCS += kernel/src/drivers/registry.c
 
-# --- user program ---
+ifdef CONFIG_SERIAL
+  CORE_SRCS += $(wildcard kernel/src/drivers/serial/*.c)
+endif
+ifdef CONFIG_PS2_KBD
+  CORE_SRCS += $(wildcard kernel/src/drivers/ps2/*.c)
+endif
+ifdef CONFIG_PIT
+  CORE_SRCS += $(wildcard kernel/src/drivers/timer/*.c)
+endif
+ifdef CONFIG_RAMDISK
+  CORE_SRCS += $(wildcard kernel/src/drivers/blkdev/*.c)
+endif
+ifdef CONFIG_EXT2
+  CORE_SRCS += $(wildcard kernel/src/drivers/ext2/*.c)
+endif
+
+# ── Tests (conditional) ──
+TEST_SRCS :=
+
+ifdef CONFIG_TESTS
+  # Always need the test runner
+  TEST_SRCS += kernel/src/tests/ktest.c
+
+ifdef CONFIG_TESTS_BOOT
+  ifdef CONFIG_TESTS_PMM
+    TEST_SRCS += $(wildcard kernel/src/tests/test_pmm_*.c)
+  endif
+  ifdef CONFIG_TESTS_VMM
+    TEST_SRCS += $(wildcard kernel/src/tests/test_vmm_*.c)
+  endif
+  ifdef CONFIG_TESTS_KHEAP
+    TEST_SRCS += $(wildcard kernel/src/tests/test_kheap_*.c)
+  endif
+  ifdef CONFIG_TESTS_SLAB
+    TEST_SRCS += $(wildcard kernel/src/tests/test_slab_*.c)
+  endif
+  ifdef CONFIG_TESTS_SCHED
+    TEST_SRCS += $(wildcard kernel/src/tests/test_sched_*.c)
+  endif
+  ifdef CONFIG_TESTS_MLFQ
+    TEST_SRCS += $(wildcard kernel/src/tests/test_mlfq_*.c)
+  endif
+  ifdef CONFIG_TESTS_FS
+    TEST_SRCS += $(wildcard kernel/src/tests/test_fs_*.c)
+    TEST_SRCS += $(wildcard kernel/src/tests/test_ramfs_*.c)
+    TEST_SRCS += $(wildcard kernel/src/tests/test_vfs_*.c)
+  endif
+  ifdef CONFIG_TESTS_CPIO
+    TEST_SRCS += $(wildcard kernel/src/tests/test_cpio_*.c)
+  endif
+  ifdef CONFIG_TESTS_BLKDEV
+    TEST_SRCS += $(wildcard kernel/src/tests/test_blkdev_*.c)
+  endif
+  ifdef CONFIG_TESTS_EXT2
+    TEST_SRCS += $(wildcard kernel/src/tests/test_ext2_*.c)
+  endif
+  ifdef CONFIG_TESTS_STRING
+    TEST_SRCS += $(wildcard kernel/src/tests/test_string.c)
+    TEST_SRCS += $(wildcard kernel/src/tests/test_math.c)
+  endif
+  ifdef CONFIG_TESTS_SPINLOCK
+    TEST_SRCS += $(wildcard kernel/src/tests/test_spinlock.c)
+  endif
+  ifdef CONFIG_TESTS_IDT
+    TEST_SRCS += $(wildcard kernel/src/tests/test_idt_*.c)
+  endif
+  ifdef CONFIG_TESTS_TIMER
+    TEST_SRCS += $(wildcard kernel/src/tests/test_timer_*.c)
+  endif
+  ifdef CONFIG_TESTS_KSTACK
+    TEST_SRCS += $(wildcard kernel/src/tests/test_kstack*.c)
+  endif
+  ifdef CONFIG_TESTS_ERROR
+    TEST_SRCS += $(wildcard kernel/src/tests/test_error_*.c)
+  endif
+  ifdef CONFIG_TESTS_FUZZ
+    TEST_SRCS += $(wildcard kernel/src/tests/test_fuzz.c)
+  endif
+endif # CONFIG_TESTS_BOOT
+
+ifdef CONFIG_TESTS_POST
+  ifdef CONFIG_TESTS_POST_SCHED
+    TEST_SRCS += $(wildcard kernel/src/tests/post/test_post_*.c)
+  endif
+  ifdef CONFIG_TESTS_POST_SYSCALL
+    TEST_SRCS += $(wildcard kernel/src/tests/post/test_syscall_*.c)
+  endif
+  ifdef CONFIG_TESTS_POST_ELF
+    TEST_SRCS += $(wildcard kernel/src/tests/post/test_elf_*.c)
+  endif
+endif # CONFIG_TESTS_POST
+
+endif # CONFIG_TESTS
+
+# ── Combine all sources ──
+C_SRCS  := $(CORE_SRCS) $(TEST_SRCS)
+
+# ── User program ──
 USER_ELF := $(BUILD_DIR)/user/hello_musl.elf
-USER_OBJ := $(BUILD_DIR)/obj/user_hello.o
+INITRD   := $(BUILD_DIR)/initrd.cpio
 
 C_OBJS  := $(patsubst %.c, $(BUILD_DIR)/obj/%.o, $(C_SRCS))
 A_OBJS  := $(patsubst %.asm, $(BUILD_DIR)/obj/%.o, $(A_SRCS))
 DEPS    := $(patsubst %.c, $(BUILD_DIR)/d/%.d, $(C_SRCS))
-OBJS    := $(C_OBJS) $(A_OBJS) $(USER_OBJ)
+OBJS    := $(C_OBJS) $(A_OBJS)
 
 KERNEL  := $(BIN_DIR)/dicron
 ISO     := $(BIN_DIR)/dicron.iso
 
 RAM ?= 128
 
-.PHONY: all iso run ranmem setram clean
+.PHONY: all iso run ranmem setram clean defconfig menuconfig oldconfig
 
 all: $(KERNEL)
 
-# Build user program using musl cross-compiler script
+# ── Kconfig targets ──
+defconfig:
+	@python3 tools/genconfig.py defconfig
+
+menuconfig:
+	@python3 tools/genconfig.py menuconfig
+
+oldconfig:
+	@python3 tools/genconfig.py oldconfig
+
+# ── Build user program ──
 $(USER_ELF): user/hello_musl.c user/linker.lds
 	@mkdir -p $(dir $@)
 	@echo "  MUSL-CC $@"
 	@musl-install/bin/musl-gcc -O2 -static -fno-pie -no-pie -Wl,-T,user/linker.lds -o $@ user/hello_musl.c
 
-# Embed user ELF as a binary blob in a linkable .o
-$(USER_OBJ): $(USER_ELF)
+# Build initrd cpio archive with /init
+$(INITRD): $(USER_ELF)
 	@mkdir -p $(dir $@)
-	@echo "  OBJCOPY $@"
-	@objcopy -I binary -O elf64-x86-64 -B i386:x86-64 \
-		--rename-section .data=.rodata,alloc,load,readonly,data,contents \
-		$< $@
+	@rm -rf $(BUILD_DIR)/initrd_root
+	@mkdir -p $(BUILD_DIR)/initrd_root
+	@cp $(USER_ELF) $(BUILD_DIR)/initrd_root/init
+	@echo "  CPIO    $@"
+	@cd $(BUILD_DIR)/initrd_root && find . | cpio -o -H newc --quiet > ../initrd.cpio
 
 $(KERNEL): $(OBJS)
 	@mkdir -p $(BIN_DIR)
@@ -65,15 +191,16 @@ $(BUILD_DIR)/obj/%.o: %.asm
 	@echo "  AS      $@"
 	@$(AS) $(ASFLAGS) -o $@ $<
 
-iso: $(KERNEL)
+iso: $(KERNEL) $(INITRD)
 	@echo "  LIM     limine bootloader setup"
 	@mkdir -p iso_root/boot/limine
 	@cp $(KERNEL) iso_root/boot/dicron
+	@cp $(INITRD) iso_root/boot/initrd.cpio
 	@cp limine.conf iso_root/boot/limine/
 	@cp Limine/limine-bios.sys iso_root/boot/limine/
 	@cp Limine/limine-bios-cd.bin iso_root/boot/limine/
 	@echo "  ISO     $(ISO)"
-	@xorriso -as mkisofs \
+	@xorriso -as mkisofs -R \
 		-b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table \
 		--protective-msdos-label \

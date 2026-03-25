@@ -58,28 +58,83 @@ int vfs_mount_root(struct inode *root_dir)
 struct inode *vfs_namei(const char *path)
 {
 	if (!root_inode) return NULL;
-	
+
 	while (*path == '/') path++;
 	if (*path == '\0') return root_inode;
-	
-	if (!root_inode->i_op || !root_inode->i_op->lookup)
-		return NULL;
-		
-	const char *slash = my_strchr(path, '/');
-	char comp[64];
-	size_t len = slash ? (size_t)(slash - path) : strlen(path);
-	if (len >= sizeof(comp)) len = sizeof(comp) - 1;
-	memcpy(comp, path, len);
-	comp[len] = '\0';
-	
-	struct inode *child = root_inode->i_op->lookup(root_inode, comp);
-	if (!child) return NULL;
-	
-	if (slash) {
-		const char *rest = slash + 1;
-		while (*rest == '/') rest++;
-		if (*rest != '\0') return NULL; /* flat root only for now */
+
+	struct inode *cur = root_inode;
+
+	while (*path) {
+		if (!cur->i_op || !cur->i_op->lookup)
+			return NULL;
+
+		const char *slash = my_strchr(path, '/');
+		char comp[64];
+		size_t len = slash ? (size_t)(slash - path) : strlen(path);
+		if (len >= sizeof(comp)) len = sizeof(comp) - 1;
+		memcpy(comp, path, len);
+		comp[len] = '\0';
+
+		cur = cur->i_op->lookup(cur, comp);
+		if (!cur) return NULL;
+
+		if (slash) {
+			path = slash + 1;
+			while (*path == '/') path++;
+		} else {
+			break;
+		}
 	}
-	
-	return child;
+
+	return cur;
+}
+
+static struct inode *vfs_parent_and_name(const char *path, const char **out_name)
+{
+	if (!root_inode || !path || *path != '/') return NULL;
+
+	while (*path == '/') path++;
+	if (*path == '\0') return NULL;
+
+	struct inode *cur = root_inode;
+
+	for (;;) {
+		const char *slash = my_strchr(path, '/');
+		if (!slash) {
+			*out_name = path;
+			return cur;
+		}
+
+		char comp[64];
+		size_t len = (size_t)(slash - path);
+		if (len >= sizeof(comp)) len = sizeof(comp) - 1;
+		memcpy(comp, path, len);
+		comp[len] = '\0';
+
+		if (!cur->i_op || !cur->i_op->lookup) return NULL;
+		cur = cur->i_op->lookup(cur, comp);
+		if (!cur) return NULL;
+
+		path = slash + 1;
+		while (*path == '/') path++;
+		if (*path == '\0') return NULL;
+	}
+}
+
+int vfs_mkdir(const char *path, int mode)
+{
+	const char *name = NULL;
+	struct inode *parent = vfs_parent_and_name(path, &name);
+	if (!parent || !name) return -1;
+	if (!parent->i_op || !parent->i_op->mkdir) return -1;
+	return parent->i_op->mkdir(parent, name, mode);
+}
+
+int vfs_create(const char *path, int mode)
+{
+	const char *name = NULL;
+	struct inode *parent = vfs_parent_and_name(path, &name);
+	if (!parent || !name) return -1;
+	if (!parent->i_op || !parent->i_op->create) return -1;
+	return parent->i_op->create(parent, name, mode);
 }

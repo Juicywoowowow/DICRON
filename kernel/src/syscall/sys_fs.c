@@ -24,7 +24,8 @@ long sys_read(long fd, long buf_addr, long count, long a3, long a4, long a5) {
   struct file *f = fd_get((int)fd);
   if (!f)
     return -EBADF;
-  if (!(f->f_mode & O_RDWR) && !(f->f_mode == O_RDONLY))
+  uint32_t accmode = f->f_mode & (O_RDONLY | O_WRONLY | O_RDWR);
+  if (accmode != O_RDONLY && accmode != O_RDWR)
     return -EBADF;
 
   if (!f->f_op || !f->f_op->read)
@@ -53,7 +54,8 @@ long sys_write(long fd, long buf_addr, long count, long a3, long a4, long a5) {
     klog(KLOG_INFO, "sys_write: fd_get failed for %d\n", (int)fd);
     return -EBADF;
   }
-  if (!(f->f_mode & O_RDWR) && !(f->f_mode == O_WRONLY)) {
+  uint32_t waccmode = f->f_mode & (O_RDONLY | O_WRONLY | O_RDWR);
+  if (waccmode != O_WRONLY && waccmode != O_RDWR) {
     klog(KLOG_INFO, "sys_write: mode bad\n");
     return -EBADF;
   }
@@ -80,10 +82,7 @@ long sys_open(long path_addr, long flags, long mode, long a3, long a4,
   struct inode *inode = vfs_namei(path);
   if (!inode) {
     if (flags & O_CREAT) {
-      /* Simplistic: assume root directory for now */
-      if (!S_ISDIR(vfs_namei("/")->mode))
-        return -ENOENT;
-      int ret = vfs_namei("/")->i_op->create(vfs_namei("/"), path, (int)mode);
+      int ret = vfs_create(path, (int)mode);
       if (ret < 0)
         return ret;
       inode = vfs_namei(path);
@@ -171,4 +170,12 @@ long sys_ioctl(long fd, long cmd, long arg, long a3, long a4, long a5) {
 	if (!f) return -EBADF;
 	/* We don't support TTY ioctls yet, musl handles ENOTTY smoothly */
 	return -ENOTTY;
+}
+
+long sys_openat(long dirfd, long path_addr, long flags, long mode, long a4, long a5)
+{
+	(void)a4; (void)a5;
+	/* AT_FDCWD (-100) means use current working directory (treat as absolute) */
+	(void)dirfd;
+	return sys_open(path_addr, flags, mode, 0, 0, 0);
 }

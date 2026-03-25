@@ -1,0 +1,50 @@
+menu "Kernel Features"
+
+config FRAMEBUFFER
+	bool "Framebuffer console"
+	default y
+	help
+	  Enable the graphical framebuffer console.
+	  If disabled, output goes to serial only.
+
+config SSE
+	bool "Enable SSE support"
+	default y
+	help
+	  Enable SSE/SSE2 in the kernel for user programs.
+
+config INITRD
+	bool "Load initrd from Limine module"
+	default y
+	help
+	  Extract a cpio initrd archive at boot and populate ramfs.
+
+config VERBOSE_SYSCALL
+	bool "Verbose syscall logging"
+	default n
+	help
+	  Log warnings for unimplemented and out-of-bounds syscalls.
+	  Useful for debugging, noisy in production.
+
+choice
+	prompt "Kernel log level"
+	default KLOG_LEVEL_INFO
+
+config KLOG_LEVEL_ERR
+	bool "Errors only"
+
+config KLOG_LEVEL_WARN
+	bool "Warnings and errors"
+
+config KLOG_LEVEL_INFO
+	bool "Info, warnings, and errors"
+
+endchoice
+
+config KLOG_LEVEL
+	int
+	default 0 if KLOG_LEVEL_ERR
+	default 1 if KLOG_LEVEL_WARN
+	default 2 if KLOG_LEVEL_INFO
+
+endmenu

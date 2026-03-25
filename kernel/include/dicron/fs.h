@@ -95,6 +95,9 @@ int vfs_mount_root(struct inode *root_dir);
 void devfs_init(void);
 struct file *devfs_get_console(void);
 
+int vfs_mkdir(const char *path, int mode);
+int vfs_create(const char *path, int mode);
+
 void ramfs_init(void);
 
 #endif

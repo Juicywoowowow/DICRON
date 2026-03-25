@@ -1,0 +1,9 @@
+mainmenu "DICRON Kernel Configuration"
+
+config DICRON_VERSION
+	string
+	default "0.3.0"
+
+source "kernel/Kconfig"
+source "kernel/Kconfig.drivers"
+source "kernel/Kconfig.tests"
