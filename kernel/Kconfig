@@ -39,12 +39,16 @@ config KLOG_LEVEL_WARN
 config KLOG_LEVEL_INFO
 	bool "Info, warnings, and errors"
 
+config KLOG_LEVEL_DEBUG
+	bool "Debug, info, warnings, and errors"
+
 endchoice
 
 config KLOG_LEVEL
 	int
-	default 0 if KLOG_LEVEL_ERR
-	default 1 if KLOG_LEVEL_WARN
-	default 2 if KLOG_LEVEL_INFO
+	default 1 if KLOG_LEVEL_ERR
+	default 2 if KLOG_LEVEL_WARN
+	default 3 if KLOG_LEVEL_INFO
+	default 4 if KLOG_LEVEL_DEBUG
 
 endmenu

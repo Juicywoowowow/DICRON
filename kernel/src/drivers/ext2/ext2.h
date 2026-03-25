@@ -152,4 +152,29 @@ long ext2_file_read(struct ext2_fs *fs, struct ext2_inode *inode,
 /* ext2_vfs.c */
 int ext2_vfs_mount(struct ext2_fs *fs, const char *mountpoint);
 
+/* ext2_bitmap.c (F6) */
+uint32_t ext2_alloc_block(struct ext2_fs *fs, uint32_t group_hint);
+void ext2_free_block(struct ext2_fs *fs, uint32_t block_nr);
+uint32_t ext2_alloc_inode(struct ext2_fs *fs, uint32_t group_hint);
+void ext2_free_inode(struct ext2_fs *fs, uint32_t ino);
+
+/* ext2_write.c (F6) */
+int ext2_write_inode(struct ext2_fs *fs, uint32_t ino,
+		     struct ext2_inode *inode);
+int ext2_write_superblock(struct ext2_fs *fs);
+int ext2_write_group_descs(struct ext2_fs *fs);
+
+/* ext2_ops.c (F6) */
+uint32_t ext2_create_file(struct ext2_fs *fs, uint32_t parent_ino,
+			  const char *name, uint32_t mode);
+uint32_t ext2_mkdir(struct ext2_fs *fs, uint32_t parent_ino,
+		    const char *name, uint32_t mode);
+long ext2_file_write(struct ext2_fs *fs, struct ext2_inode *inode,
+		     uint32_t ino, const void *data,
+		     size_t offset, size_t count);
+int ext2_dir_add_entry(struct ext2_fs *fs, struct ext2_inode *dir,
+		       uint32_t dir_ino, const char *name,
+		       uint32_t child_ino, uint8_t file_type);
+int ext2_unlink(struct ext2_fs *fs, uint32_t parent_ino, const char *name);
+
 #endif

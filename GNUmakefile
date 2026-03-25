@@ -21,7 +21,9 @@ ASFLAGS := -f elf64
 # ── Core sources (always built) ──
 CORE_SRCS := $(shell find kernel/src -maxdepth 1 -name '*.c')
 CORE_SRCS += $(shell find kernel/src/arch -name '*.c')
-CORE_SRCS += $(shell find kernel/src/console -name '*.c')
+ifdef CONFIG_FRAMEBUFFER
+  CORE_SRCS += $(shell find kernel/src/console -name '*.c')
+endif
 CORE_SRCS += $(shell find kernel/src/fs -name '*.c')
 CORE_SRCS += $(shell find kernel/src/io -name '*.c')
 CORE_SRCS += $(shell find kernel/src/lib -name '*.c')
@@ -90,7 +92,17 @@ ifdef CONFIG_TESTS_BOOT
     TEST_SRCS += $(wildcard kernel/src/tests/test_blkdev_*.c)
   endif
   ifdef CONFIG_TESTS_EXT2
-    TEST_SRCS += $(wildcard kernel/src/tests/test_ext2_*.c)
+    TEST_SRCS += kernel/src/tests/test_ext2_structs.c
+  endif
+  ifdef CONFIG_TESTS_EXT2_WRITE
+    TEST_SRCS += kernel/src/tests/ext2_test_helper.c
+    TEST_SRCS += kernel/src/tests/test_ext2_bitmap_alloc.c
+    TEST_SRCS += kernel/src/tests/test_ext2_bitmap_free.c
+    TEST_SRCS += kernel/src/tests/test_ext2_write_inode.c
+    TEST_SRCS += kernel/src/tests/test_ext2_create_file.c
+    TEST_SRCS += kernel/src/tests/test_ext2_mkdir.c
+    TEST_SRCS += kernel/src/tests/test_ext2_file_write.c
+    TEST_SRCS += kernel/src/tests/test_ext2_unlink.c
   endif
   ifdef CONFIG_TESTS_STRING
     TEST_SRCS += $(wildcard kernel/src/tests/test_string.c)

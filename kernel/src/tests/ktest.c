@@ -1,4 +1,5 @@
 #include "ktest.h"
+#include <generated/autoconf.h>
 
 struct ktest_stats ktest_stats;
 
@@ -9,7 +10,7 @@ void ktest_init(void) {
 }
 
 void ktest_summary(void) {
-#if BOOT_TEST_SHOW
+#ifdef CONFIG_TESTS_SHOW_VERBOSE
   kio_printf("\n========================================\n");
   kio_printf("  BOOT TEST SUMMARY\n");
   kio_printf("  Total:  %d\n", ktest_stats.total);
@@ -28,7 +29,7 @@ void ktest_summary(void) {
 static int ktest_run_category(int category, const char *label) {
   ktest_init();
 
-#if BOOT_TEST_SHOW
+#ifdef CONFIG_TESTS_SHOW_VERBOSE
   kio_printf("DICRON %s Test Harness\n", label);
   kio_printf("========================\n");
 #else
@@ -38,7 +39,7 @@ static int ktest_run_category(int category, const char *label) {
   for (const struct ktest_entry *e = __ktest_start; e < __ktest_end; e++) {
     if (e->category != category)
       continue;
-#if BOOT_TEST_SHOW
+#ifdef CONFIG_TESTS_SHOW_VERBOSE
     kio_printf("\n--- %s ---\n", e->name);
 #endif
     int before_fail = ktest_stats.failed;

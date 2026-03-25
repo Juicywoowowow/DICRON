@@ -2,8 +2,13 @@
 #include <dicron/io.h>
 #include "lib/printf.h"
 #include <stdarg.h>
+#include <generated/autoconf.h>
 
-static int log_level = KLOG_DEBUG;
+#ifndef CONFIG_KLOG_LEVEL
+#define CONFIG_KLOG_LEVEL KLOG_INFO
+#endif
+
+static int log_level = CONFIG_KLOG_LEVEL;
 
 static const char *level_str[] = {
 	"EMERG", "ERR", "WARN", "INFO", "DEBUG"

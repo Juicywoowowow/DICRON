@@ -7,6 +7,15 @@ config TESTS
 	  Master switch for all kernel tests.
 	  Disabling this removes ALL test code from the binary.
 
+config TESTS_SHOW_VERBOSE
+	bool "Show verbose boot test output"
+	default n
+	depends on TESTS
+	help
+	  Display individual test suite names and detailed
+	  pass/fail summary during boot. If disabled, only
+	  failures and the final total are printed.
+
 if TESTS
 
 config TESTS_BOOT
@@ -64,6 +73,15 @@ config TESTS_EXT2
 	bool "ext2 structure tests"
 	default y
 	depends on EXT2
+
+config TESTS_EXT2_WRITE
+	bool "ext2 write-path tests"
+	default y
+	depends on EXT2 && RAMDISK
+	help
+	  Tests for ext2 bitmap alloc/free, inode write-back,
+	  file creation, mkdir, file write, and unlink.
+	  Requires both ext2 driver and ramdisk block device.
 
 config TESTS_STRING
 	bool "String/math/misc tests"

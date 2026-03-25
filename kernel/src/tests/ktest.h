@@ -5,8 +5,7 @@
 #include <dicron/panic.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#define BOOT_TEST_SHOW 0
+#include <generated/autoconf.h>
 
 /* ── test categories ── */
 #define KTEST_CAT_BOOT 0
@@ -42,7 +41,7 @@ struct ktest_stats {
 extern struct ktest_stats ktest_stats;
 
 /* ── suite begin ── */
-#if BOOT_TEST_SHOW
+#ifdef CONFIG_TESTS_SHOW_VERBOSE
 #define KTEST_BEGIN(suite_name) kio_printf("\n--- %s ---\n", (suite_name))
 #else
 #define KTEST_BEGIN(suite_name)                                                \
