@@ -11,7 +11,7 @@ connected devices and provides access to their configuration space.
 2. Configuration Space
 -----------------------
 
-PCI uses两层 configuration space:
+PCI uses configuration space:
   - Type 1: Per-bus, per-device, per-function addressing
   - Accessed through I/O ports 0xCF8 (address) and 0xCFC (data)
 
