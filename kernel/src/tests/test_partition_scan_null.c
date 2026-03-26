@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "drivers/ata/ata.h"
+#include "drivers/new/ata/ata.h"
 #include <dicron/blkdev.h>
 
 KTEST_REGISTER(test_partition_scan_null, "Part: scan null args", KTEST_CAT_BOOT)

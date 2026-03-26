@@ -2,6 +2,7 @@
 #include <dicron/mem.h>
 #include <dicron/log.h>
 #include "lib/string.h"
+#include <generated/autoconf.h>
 
 struct ext2_fs *ext2_mount(struct blkdev *dev)
 {
@@ -75,12 +76,26 @@ struct ext2_fs *ext2_mount(struct blkdev *dev)
 	     fs->sb.s_blocks_count, fs->sb.s_inodes_count,
 	     fs->block_size, fs->groups_count);
 
+#ifdef CONFIG_EXT2_CHECK
+	int check_errors = ext2_check_superblock(fs);
+	if (check_errors < 0) {
+		klog(KLOG_ERR, "ext2: superblock check failed — "
+		     "refusing to mount\n");
+		kfree(fs->group_descs);
+		kfree(fs);
+		return NULL;
+	}
+#endif
+
 	return fs;
 }
 
 void ext2_unmount(struct ext2_fs *fs)
 {
 	if (!fs) return;
+#ifdef CONFIG_EXT2_SYNC
+	ext2_sync_unmount(fs);
+#endif
 	if (fs->group_descs)
 		kfree(fs->group_descs);
 	kfree(fs);

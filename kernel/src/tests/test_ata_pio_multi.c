@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "drivers/ata/ata.h"
+#include "drivers/new/ata/ata.h"
 #include <dicron/mem.h>
 #include "lib/string.h"
 

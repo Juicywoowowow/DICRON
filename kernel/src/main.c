@@ -14,7 +14,11 @@
 #include "drivers/pci/pci.h"
 #endif
 #ifdef CONFIG_ATA
-#include "drivers/ata/ata.h"
+#include "drivers/new/ata/ata.h"
+#include <dicron/blkdev.h>
+#ifdef CONFIG_EXT2
+#include "drivers/ext2/ext2.h"
+#endif
 #endif
 #include <dicron/io.h>
 #include <dicron/log.h>
@@ -123,6 +127,42 @@ void kmain(void)
 	vfs_init();
 	devfs_init();
 	ramfs_init();
+
+#ifdef CONFIG_ATA
+	/* If an ATA drive is present, scan for ext2 partitions and mount */
+	if (ata_drive_count() > 0) {
+		struct ata_drive *drv = ata_get_drive(0);
+		struct blkdev *disk = ata_blkdev_create(drv);
+		if (disk) {
+#ifdef CONFIG_PARTITION_MBR
+			struct partition_info parts[4];
+			int nparts = partition_scan(disk, parts, 4);
+			for (int i = 0; i < nparts; i++) {
+				if (parts[i].type == MBR_PART_TYPE_LINUX) {
+					struct blkdev *pdev =
+						partition_blkdev_create(
+							disk,
+							parts[i].start_lba,
+							parts[i].sector_count);
+					if (!pdev)
+						continue;
+#ifdef CONFIG_EXT2
+					struct ext2_fs *fs = ext2_mount(pdev);
+					if (fs) {
+						ext2_vfs_mount(fs, "/disk");
+						klog(KLOG_INFO,
+						     "ata: mounted ext2 "
+						     "partition %d at "
+						     "/disk\n", i);
+					}
+#endif
+					break;
+				}
+			}
+#endif /* CONFIG_PARTITION_MBR */
+		}
+	}
+#endif /* CONFIG_ATA */
 
 	klog(KLOG_INFO, "PMM: %lu free / %lu total pages (%lu KiB free)\n",
 	     pmm_free_pages_count(), pmm_total_pages_count(),

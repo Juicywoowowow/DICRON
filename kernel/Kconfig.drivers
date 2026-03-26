@@ -18,6 +18,23 @@ config EXT2
 	help
 	  Read-write ext2 filesystem support.
 
+config EXT2_CHECK
+	bool "ext2 integrity checks"
+	default y
+	depends on EXT2
+	help
+	  Run validation checks on superblocks, inodes, and directories
+	  during mount and I/O. Slight performance cost but catches
+	  corruption early.
+
+config EXT2_SYNC
+	bool "ext2 sync/flush support"
+	default y
+	depends on EXT2
+	help
+	  Dirty tracking and metadata flush on sync/unmount.
+	  Ensures writes are persisted and clean unmount state is set.
+
 config RAMDISK
 	bool "RAM block device"
 	default y
@@ -30,6 +47,12 @@ config PCI
 	help
 	  Scan and enumerate PCI devices at boot.
 	  Required for AHCI, NIC, and most modern hardware.
+
+endmenu
+
+menu "New Drivers"
+
+comment "Functional but subject to change — enable individually"
 
 menu "ATA / Disk"
 
@@ -57,6 +80,22 @@ config PARTITION_MBR
 	help
 	  Parse MBR partition tables to find ext2 partitions on disk.
 
+config TEST_ATA_DRIVE
+	bool "Create temporary test ATA drive for QEMU"
+	default n
+	depends on ATA
+	help
+	  When enabled, the QEMU run targets will automatically create
+	  a small raw disk image, attach it as a secondary IDE drive,
+	  and delete it when QEMU exits. Useful for testing ATA and
+	  partition code against a real (emulated) disk.
+
 endmenu
+
+endmenu
+
+menu "Staged Drivers"
+
+comment "Experimental / unstable — disabled by default"
 
 endmenu

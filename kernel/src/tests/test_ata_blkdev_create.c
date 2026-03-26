@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "drivers/ata/ata.h"
+#include "drivers/new/ata/ata.h"
 #include <dicron/blkdev.h>
 
 KTEST_REGISTER(test_ata_blkdev_create, "ATA: blkdev create", KTEST_CAT_BOOT)

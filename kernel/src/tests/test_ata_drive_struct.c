@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "drivers/ata/ata.h"
+#include "drivers/new/ata/ata.h"
 #include "lib/string.h"
 
 KTEST_REGISTER(test_ata_drive_struct, "ATA: drive struct", KTEST_CAT_BOOT)

@@ -52,9 +52,16 @@ ifdef CONFIG_RAMDISK
 endif
 ifdef CONFIG_EXT2
   CORE_SRCS += $(wildcard kernel/src/drivers/ext2/*.c)
+ifndef CONFIG_EXT2_CHECK
+  CORE_SRCS := $(filter-out kernel/src/drivers/ext2/ext2_check.c,$(CORE_SRCS))
 endif
+ifndef CONFIG_EXT2_SYNC
+  CORE_SRCS := $(filter-out kernel/src/drivers/ext2/ext2_sync.c,$(CORE_SRCS))
+endif
+endif
+# ── New Drivers ──
 ifdef CONFIG_ATA
-  CORE_SRCS += $(wildcard kernel/src/drivers/ata/*.c)
+  CORE_SRCS += $(wildcard kernel/src/drivers/new/ata/*.c)
 endif
 ifdef CONFIG_PCI
   CORE_SRCS += $(wildcard kernel/src/drivers/pci/*.c)
@@ -176,8 +183,19 @@ KERNEL  := $(BIN_DIR)/dicron
 ISO     := $(BIN_DIR)/dicron.iso
 
 RAM ?= 128
+TEST_ATA_IMG := $(BUILD_DIR)/test-ata.img
 
-.PHONY: all iso run ranmem setram clean defconfig menuconfig oldconfig
+# If CONFIG_TEST_ATA_DRIVE is enabled, create a temp ATA drive and attach it
+ifdef CONFIG_TEST_ATA_DRIVE
+  QEMU_ATA_FLAGS := -boot d \
+    -device piix3-ide,id=testide \
+    -drive if=none,id=testata,file=$(TEST_ATA_IMG),format=raw \
+    -device ide-hd,drive=testata,bus=testide.0
+else
+  QEMU_ATA_FLAGS :=
+endif
+
+.PHONY: all iso run ranmem setram clean defconfig menuconfig oldconfig test-ata-img
 
 all: $(KERNEL)
 
@@ -237,37 +255,60 @@ iso: $(KERNEL) $(INITRD)
 		iso_root -o $(ISO) > /dev/null 2>&1
 	@rm -rf iso_root
 
-run: iso
+# ── Test ATA drive image ──
+test-ata-img:
+ifdef CONFIG_TEST_ATA_DRIVE
+	@mkdir -p $(BUILD_DIR)
+	@bash tools/mk-test-ata.sh $(TEST_ATA_IMG) 32
+endif
+
+run: iso test-ata-img
 	qemu-system-x86_64 \
 		-M q35 \
 		-cdrom $(ISO) \
+		$(QEMU_ATA_FLAGS) \
 		-serial stdio \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
+ifdef CONFIG_TEST_ATA_DRIVE
+	@rm -f $(TEST_ATA_IMG)
+	@echo "  ATA-IMG $(TEST_ATA_IMG) cleaned up"
+endif
+
 # Run with a specific amount of RAM (in MB): make setram RAM=64
-setram: iso
+setram: iso test-ata-img
 	@echo "=== Running with $(RAM) MB RAM ==="
 	qemu-system-x86_64 \
 		-M q35 \
 		-m $(RAM) \
 		-cdrom $(ISO) \
+		$(QEMU_ATA_FLAGS) \
 		-serial stdio \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
+ifdef CONFIG_TEST_ATA_DRIVE
+	@rm -f $(TEST_ATA_IMG)
+	@echo "  ATA-IMG $(TEST_ATA_IMG) cleaned up"
+endif
 
 # Run with random RAM between 1 MB and 5120 MB
-ranmem: iso
+ranmem: iso test-ata-img
 	$(eval RAND_RAM := $(shell shuf -i 1-5120 -n 1))
 	@echo "=== Running with $(RAND_RAM) MB RAM (random) ==="
 	qemu-system-x86_64 \
 		-M q35 \
 		-m $(RAND_RAM) \
 		-cdrom $(ISO) \
+		$(QEMU_ATA_FLAGS) \
 		-serial stdio \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
+ifdef CONFIG_TEST_ATA_DRIVE
+	@rm -f $(TEST_ATA_IMG)
+	@echo "  ATA-IMG $(TEST_ATA_IMG) cleaned up"
+endif
 
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR) iso_root qemu.log
+	rm -rf $(BUILD_DIR) $(BIN_DIR) iso_root qemu.log $(TEST_ATA_IMG)
 
 -include $(DEPS)

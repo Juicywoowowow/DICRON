@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "drivers/ata/ata.h"
+#include "drivers/new/ata/ata.h"
 
 KTEST_REGISTER(test_ata_port_offsets, "ATA: port register offsets", KTEST_CAT_BOOT)
 static void test_ata_port_offsets(void)
