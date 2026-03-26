@@ -19,23 +19,6 @@ HARDWARE SUPPORT
   - High-precision PIT execution and RTC integration.
   - Framebuffer display via the Limine bootloader interface.
   - Native SSE/SSE2 instruction set utilization for application contexts.
-
-DIRECTORY STRUCTURE
-
-  The kernel implementation resides primarily under the `kernel/src/` hierarchy.
-
-  kernel/src/arch/    CPU-specific architecture code (GDT, IDT, TSS, Syscalls).
-  kernel/src/console/ Framebuffer console output handlers.
-  kernel/src/drivers/ Hardware drivers (ATA, PCI, EXT2, PS2, Serial, Timer).
-  kernel/src/fs/      Virtual File System (VFS) and core filesystems (ext2, ramfs, devfs).
-  kernel/src/io/      Kernel logging (klog) and generic I/O functionality.
-  kernel/src/lib/     Freestanding C library equivalents (memcpy, vsnprintf, etc.).
-  kernel/src/mm/      Memory management (PMM, VMM, and Slab Allocator).
-  kernel/src/proc/    Process definitions and standard ELF binary loading.
-  kernel/src/sched/   Multilevel Feedback Queue (MLFQ) scheduler implementation.
-  kernel/src/syscall/ Kernel system call dispatching boundaries.
-  kernel/src/tests/   Internal system boot and post-boot testing harness frameworks.
-
 BOOTLOADER (LIMINE)
 
   DICRON relies exclusively on the Limine Bootloader Protocol for bootstrapping.
@@ -85,3 +68,4 @@ DEBUGGING AND TESTS
   Extensive logging isolates states securely to the QEMU serial output via `klog`.
   System crashes or user-mode execution violations prompt full register traces aligned
   directly against Limine's hardware topology reports to reliably track debugging contexts.
+
