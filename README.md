@@ -1,71 +1,87 @@
-# DICRON Kernel 
+DICRON Kernel
+=============
 
-DICRON is an experimental, 64-bit (`x86_64`) Unix-like operating system kernel originally designed and built from scratch. It features a custom Multilevel Feedback Queue (MLFQ) scheduler, a robust Virtual Memory Manager (VMM), dynamic memory allocation via a tailored slab allocator, a Virtual File System (VFS), and natively runs C applications built against the standard `musl` C library.
+WHAT IS DICRON?
 
-## Key Features
+  DICRON is a 64-bit (x86_64) Unix-like operating system kernel built from
+  scratch. It is designed with clean abstractions, focusing on robust process
+  scheduling, memory management, and compatibility with the Linux x86_64 ABI
+  to natively run static C applications compiled against the musl libc library.
 
-- **Architecture**: `x86_64` specific, utilizing modern CPU features like SSE, hardware context switching, and advanced paging.
-- **Memory Management**: 
-  - Physical Memory Manager (PMM) powered by a bitmap allocator.
-  - Virtual Memory Manager (VMM) supporting Higher Half Direct Mapping (HHDM) and 4-level paging.
-  - Kernel Heap based on a scalable Slab Allocator equipped with fully validated OOM and double-free protections.
-- **Process Management**: 
-  - Multilevel Feedback Queue (MLFQ) Scheduler with dynamic priority adjustments.
-  - True Ring 3 Usermode execution supporting isolated process address spaces.
-  - POSIX-compliant System Call architecture utilizing native `SYSCALL`/`SYSRET` transitions.
-- **Filesystems**: Abstract Virtual File System (VFS) with `devfs` (serial console) and `ramfs` backend integration.
-- **Userspace**: Evaluates and executes standard static ELF64 binaries linked against `musl libc`.
+HARDWARE SUPPORT
 
----
+  Currently, DICRON strictly targets the x86_64 architecture. Key hardware features
+  include:
+  - PCI enumeration and configuration.
+  - ATA PIO disk devices with MBR partition table parsing.
+  - PS/2 Keyboard input logic.
+  - Basic PC serial (COM1) for remote debugging.
+  - High-precision PIT execution and RTC integration.
+  - Framebuffer display via the Limine bootloader interface.
+  - Native SSE/SSE2 instruction set utilization for application contexts.
 
-##  Build and Compilation Guide
+DIRECTORY STRUCTURE
 
-### Prerequisites
-You need a Unix-like environment (WSL2 Ubuntu, native Linux, or macOS) with the following standard packages installed:
-- `gcc` and `make` 
-- `nasm` (Netwide Assembler)
-- `xorriso` (for building the `.iso` image)
-- `qemu-system-x86_64` (for virtualization and testing)
-- `git`
+  The kernel implementation resides primarily under the `kernel/src/` hierarchy.
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/Juicywoowowow/DICRON.git
-cd DICRON
-```
+  kernel/src/arch/    CPU-specific architecture code (GDT, IDT, TSS, Syscalls).
+  kernel/src/console/ Framebuffer console output handlers.
+  kernel/src/drivers/ Hardware drivers (ATA, PCI, EXT2, PS2, Serial, Timer).
+  kernel/src/fs/      Virtual File System (VFS) and core filesystems (ext2, ramfs, devfs).
+  kernel/src/io/      Kernel logging (klog) and generic I/O functionality.
+  kernel/src/lib/     Freestanding C library equivalents (memcpy, vsnprintf, etc.).
+  kernel/src/mm/      Memory management (PMM, VMM, and Slab Allocator).
+  kernel/src/proc/    Process definitions and standard ELF binary loading.
+  kernel/src/sched/   Multilevel Feedback Queue (MLFQ) scheduler implementation.
+  kernel/src/syscall/ Kernel system call dispatching boundaries.
+  kernel/src/tests/   Internal system boot and post-boot testing harness frameworks.
 
-### 2. Prepare the Initial Bootloader
-DICRON is booted via the `Limine` bootloader protocols. If you did not download Limine with the original repository structure, download the binaries directly:
-```bash
-git clone https://github.com/limine-bootloader/limine.git Limine --branch v5.x-branch-binary --depth=1
-make -C Limine
-```
+BOOTLOADER (LIMINE)
 
-### 3. Compile the `musl` Cross-Compiler
-Because DICRON evaluates standard C code, we must compile a bare-metal variation of `musl libc`. Run these commands exactly as written from the root of the DICRON directory:
-```bash
-git clone git://git.musl-libc.org/musl
-cd musl
-./configure --prefix=$PWD/../musl-install --disable-shared
-make -j$(nproc)
-make install
-cd ..
-```
-*This seamlessly initializes a specialized `musl-gcc` wrapper within `musl-install/bin/musl-gcc` that the build framework utilizes for dynamically linking usermode binaries.*
+  DICRON relies exclusively on the Limine Bootloader Protocol for bootstrapping.
+  Limine is responsible for preparing the physical memory map, setting up Higher Half
+  Direct Mapping (HHDM), assigning base kernel stacks, passing framebuffer layout 
+  structures, and extracting the initial ramdisk (initrd) archive directly into memory
+  before transferring execution to `kmain()`. Limine streamlines pre-boot execution, 
+  avoiding the typical constraints and complexities of Legacy BIOS or raw UEFI routines.
 
-### 4. Compile the Kernel and Launch
-To compile the entirety of the DICRON kernel and the basic userspace implementation (`user/hello_musl.c`), build the final bootable ISO image, and launch the operating system safely within QEMU:
-```bash
-make clean
-make run
-```
+COMPILATION AND DEPLOYMENT
 
-### 5. Custom RAM Verification (Optional)
-DICRON has been intensely stress-tested across hundreds of dynamic memory boundaries. You can evaluate DICRON's resiliency directly with the following `make` tools:
-- `make setram RAM=64` — Launch DICRON with an explicitly constrained 64 MB of RAM.
-- `make ranmem` — Launch DICRON with a completely randomized system memory constraint.
+  1. System Toolchain
+     A standard GNU toolchain is required alongside NASM, xorriso, and QEMU.
+     For Debian/Ubuntu base targets:
+     $ sudo apt-get install gcc nasm make xorriso mtools qemu-system-x86_64 git
 
----
+  2. Downloading Limine
+     You must download the Limine bootloader binaries via git clone prior to building.
+     DICRON is strictly compatible only with Limine version 6.x and above. Versions
+     5.x and below are entirely unsupported and will cause boot failures.
+     $ git clone https://github.com/limine-bootloader/limine.git Limine --branch v6.x-branch-binary --depth=1
+     $ make -C Limine
 
-## Testing & Analytics
-During the early launch cycle, DICRON automatically executes an internal test harness (`ktest`). The system performs hundreds of rigorous, isolated verifications involving deep nested slab allocations, volatile process queues, hardware edge cases, standard library syscalls mapping, and userspace memory boundary pointer validation (`uaccess`) before the final OS context switches into the ultimate Phase U4 musl user process.
+  3. Building musl libc
+     DICRON applications utilize stable musl routines locally cross-compiled.
+     Execute the following across the primary project tree:
+     $ git clone git://git.musl-libc.org/musl
+     $ cd musl
+     $ ./configure --prefix=$PWD/../musl-install --disable-shared
+     $ make -j$(nproc)
+     $ make install
+     $ cd ..
+
+  4. Configuring the Kernel
+     The system employs a rigid Kconfig-like structure utilizing GNU make semantics.
+     $ make menuconfig
+
+  5. Building the OS Image
+     Compilation will dynamically resolve local dependencies, inject Limine boot 
+     structures, and produce an ISO functional directly inside QEMU.
+     $ make run
+
+DEBUGGING AND TESTS
+  
+  During standard boot cycles, DICRON performs rigorous integrated test validations
+  against Page bounds, Slab exhaustions, and Scheduler synchronization mechanisms. 
+  Extensive logging isolates states securely to the QEMU serial output via `klog`.
+  System crashes or user-mode execution violations prompt full register traces aligned
+  directly against Limine's hardware topology reports to reliably track debugging contexts.
