@@ -16,12 +16,47 @@ config EXT2
 	bool "ext2 filesystem driver"
 	default y
 	help
-	  Read-only ext2 filesystem support via ramdisk block device.
+	  Read-write ext2 filesystem support.
 
 config RAMDISK
 	bool "RAM block device"
 	default y
 	help
 	  Memory-backed block device for loading filesystem images.
+
+config PCI
+	bool "PCI bus enumeration"
+	default y
+	help
+	  Scan and enumerate PCI devices at boot.
+	  Required for AHCI, NIC, and most modern hardware.
+
+menu "ATA / Disk"
+
+config ATA
+	bool "ATA PIO disk driver"
+	default n
+	help
+	  ATA PIO-mode disk driver for IDE hard drives.
+	  Required for persistent storage on real or emulated hardware.
+
+config ATA_PRIMARY
+	bool "Probe primary ATA bus (0x1F0)"
+	default y
+	depends on ATA
+
+config ATA_SECONDARY
+	bool "Probe secondary ATA bus (0x170)"
+	default n
+	depends on ATA
+
+config PARTITION_MBR
+	bool "MBR partition table support"
+	default y
+	depends on ATA
+	help
+	  Parse MBR partition tables to find ext2 partitions on disk.
+
+endmenu
 
 endmenu

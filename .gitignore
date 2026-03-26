@@ -7,6 +7,7 @@ build/
 
 # Dependencies
 /Limine/
+Limine/
 
 # Output
 bin/
@@ -41,3 +42,4 @@ filesystem.md
 implementation_plan.md
 userspace.md
 rememberme.txt
+driver-ideas.md

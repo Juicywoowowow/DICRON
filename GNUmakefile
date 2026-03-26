@@ -53,6 +53,12 @@ endif
 ifdef CONFIG_EXT2
   CORE_SRCS += $(wildcard kernel/src/drivers/ext2/*.c)
 endif
+ifdef CONFIG_ATA
+  CORE_SRCS += $(wildcard kernel/src/drivers/ata/*.c)
+endif
+ifdef CONFIG_PCI
+  CORE_SRCS += $(wildcard kernel/src/drivers/pci/*.c)
+endif
 
 # ── Tests (conditional) ──
 TEST_SRCS :=
@@ -125,6 +131,18 @@ ifdef CONFIG_TESTS_BOOT
   endif
   ifdef CONFIG_TESTS_FUZZ
     TEST_SRCS += $(wildcard kernel/src/tests/test_fuzz.c)
+  endif
+  ifdef CONFIG_TESTS_PCI
+    TEST_SRCS += $(wildcard kernel/src/tests/test_pci_*.c)
+  endif
+  ifdef CONFIG_TESTS_RTC
+    TEST_SRCS += $(wildcard kernel/src/tests/test_rtc_*.c)
+  endif
+  ifdef CONFIG_TESTS_ATA
+    TEST_SRCS += $(wildcard kernel/src/tests/test_ata_*.c)
+  endif
+  ifdef CONFIG_TESTS_PARTITION
+    TEST_SRCS += $(wildcard kernel/src/tests/test_partition_*.c)
   endif
 endif # CONFIG_TESTS_BOOT
 

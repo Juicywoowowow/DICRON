@@ -3,6 +3,8 @@
 #include <dicron/sched.h>
 #include <dicron/log.h>
 #include <dicron/uaccess.h>
+#include <dicron/time.h>
+#include "drivers/timer/rtc.h"
 #include "lib/string.h"
 
 /*
@@ -168,9 +170,8 @@ long sys_gettimeofday(long tv_addr, long tz_addr, long a2, long a3, long a4, lon
 		if (!uaccess_valid((void *)tv_addr, sizeof(struct timeval)))
 			return -EFAULT;
 		struct timeval *tv = (struct timeval *)tv_addr;
-		/* Hardcode a timestamp for now, later hook up to RTC/PIT */
-		tv->tv_sec = 0;
-		tv->tv_usec = 0;
+		tv->tv_sec = (long)rtc_unix_time();
+		tv->tv_usec = (long)((ktime_ms() % 1000) * 1000);
 	}
 	return 0;
 }

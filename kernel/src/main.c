@@ -9,6 +9,13 @@
 #include "drivers/serial/com.h"
 #include "drivers/ps2/kbd.h"
 #include "drivers/timer/pit.h"
+#include "drivers/timer/rtc.h"
+#ifdef CONFIG_PCI
+#include "drivers/pci/pci.h"
+#endif
+#ifdef CONFIG_ATA
+#include "drivers/ata/ata.h"
+#endif
 #include <dicron/io.h>
 #include <dicron/log.h>
 #include <dicron/panic.h>
@@ -104,6 +111,13 @@ void kmain(void)
 	serial_init();
 	kbd_init();
 	pit_init();
+	rtc_init();
+#ifdef CONFIG_PCI
+	pci_init();
+#endif
+#ifdef CONFIG_ATA
+	ata_init();
+#endif
 	syscall_init();
 	syscall_table_init();
 	vfs_init();

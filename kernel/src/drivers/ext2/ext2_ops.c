@@ -354,10 +354,41 @@ long ext2_file_write(struct ext2_fs *fs, struct ext2_inode *inode,
 			/* Assign to appropriate slot */
 			if (file_block < EXT2_NDIR_BLOCKS) {
 				inode->i_block[file_block] = block_nr;
+			} else if (file_block - EXT2_NDIR_BLOCKS <
+				   fs->addrs_per_block) {
+				/* Single indirect block */
+				uint32_t idx = file_block - EXT2_NDIR_BLOCKS;
+				uint32_t ind_blk = inode->i_block[EXT2_IND_BLOCK];
+				uint32_t *ind = kmalloc(fs->block_size);
+				if (!ind) {
+					ext2_free_block(fs, block_nr);
+					kfree(block_buf);
+					return -1;
+				}
+				if (ind_blk == 0) {
+					ind_blk = ext2_alloc_block(fs, 0);
+					if (ind_blk == 0) {
+						kfree(ind);
+						ext2_free_block(fs, block_nr);
+						kfree(block_buf);
+						return -1;
+					}
+					memset(ind, 0, fs->block_size);
+					inode->i_block[EXT2_IND_BLOCK] = ind_blk;
+				} else {
+					if (ext2_read_block(fs, ind_blk, ind) != 0) {
+						kfree(ind);
+						ext2_free_block(fs, block_nr);
+						kfree(block_buf);
+						return -1;
+					}
+				}
+				ind[idx] = block_nr;
+				ext2_write_block(fs, ind_blk, ind);
+				kfree(ind);
 			} else {
-				/* TODO: indirect block support */
-				klog(KLOG_ERR, "ext2_file_write: indirect "
-				     "write not yet supported\n");
+				klog(KLOG_ERR, "ext2_file_write: double/triple "
+				     "indirect write not yet supported\n");
 				ext2_free_block(fs, block_nr);
 				kfree(block_buf);
 				return -1;
@@ -492,7 +523,7 @@ int ext2_unlink(struct ext2_fs *fs, uint32_t parent_ino, const char *name)
 					child.i_links_count--;
 
 				if (child.i_links_count == 0) {
-					/* Free all data blocks */
+					/* Free all direct data blocks */
 					for (uint32_t i = 0;
 					     i < EXT2_NDIR_BLOCKS; i++) {
 						if (child.i_block[i] != 0) {
@@ -502,7 +533,59 @@ int ext2_unlink(struct ext2_fs *fs, uint32_t parent_ino, const char *name)
 							child.i_block[i] = 0;
 						}
 					}
-					/* TODO: free indirect blocks */
+					/* Free single indirect block and its entries */
+					if (child.i_block[EXT2_IND_BLOCK] != 0) {
+						uint32_t *ind = kmalloc(fs->block_size);
+						if (ind) {
+							if (ext2_read_block(fs,
+							    child.i_block[EXT2_IND_BLOCK],
+							    ind) == 0) {
+								for (uint32_t j = 0;
+								     j < fs->addrs_per_block;
+								     j++) {
+									if (ind[j] != 0)
+										ext2_free_block(fs, ind[j]);
+								}
+							}
+							kfree(ind);
+						}
+						ext2_free_block(fs,
+						    child.i_block[EXT2_IND_BLOCK]);
+						child.i_block[EXT2_IND_BLOCK] = 0;
+					}
+					/* Free double indirect block and its entries */
+					if (child.i_block[EXT2_DIND_BLOCK] != 0) {
+						uint32_t *dind = kmalloc(fs->block_size);
+						if (dind) {
+							if (ext2_read_block(fs,
+							    child.i_block[EXT2_DIND_BLOCK],
+							    dind) == 0) {
+								for (uint32_t j = 0;
+								     j < fs->addrs_per_block;
+								     j++) {
+									if (dind[j] == 0)
+										continue;
+									uint32_t *ind = kmalloc(fs->block_size);
+									if (ind) {
+										if (ext2_read_block(fs, dind[j], ind) == 0) {
+											for (uint32_t k = 0;
+											     k < fs->addrs_per_block;
+											     k++) {
+												if (ind[k] != 0)
+													ext2_free_block(fs, ind[k]);
+											}
+										}
+										kfree(ind);
+									}
+									ext2_free_block(fs, dind[j]);
+								}
+							}
+							kfree(dind);
+						}
+						ext2_free_block(fs,
+						    child.i_block[EXT2_DIND_BLOCK]);
+						child.i_block[EXT2_DIND_BLOCK] = 0;
+					}
 					child.i_size = 0;
 					child.i_blocks = 0;
 

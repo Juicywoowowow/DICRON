@@ -2,7 +2,10 @@
 #include <dicron/process.h>
 #include <dicron/mem.h>
 #include <dicron/log.h>
+#include <dicron/spinlock.h>
 #include <stddef.h>
+
+static spinlock_t file_ref_lock = SPINLOCK_INIT;
 
 /* Allocates a file struct */
 struct file *file_alloc(void)
@@ -16,16 +19,23 @@ struct file *file_alloc(void)
 /* Increments reference count */
 void file_get(struct file *f)
 {
-	if (f)
-		f->f_count++; /* TODO: atomic */
+	if (!f) return;
+	uint64_t flags = spin_lock_irqsave(&file_ref_lock);
+	f->f_count++;
+	spin_unlock_irqrestore(&file_ref_lock, flags);
 }
 
 /* Decrements reference count, frees if 0 */
 void file_put(struct file *f)
 {
 	if (!f) return;
+	int do_free = 0;
+	uint64_t flags = spin_lock_irqsave(&file_ref_lock);
 	f->f_count--;
-	if (f->f_count <= 0) {
+	if (f->f_count <= 0)
+		do_free = 1;
+	spin_unlock_irqrestore(&file_ref_lock, flags);
+	if (do_free) {
 		if (f->f_op && f->f_op->release)
 			f->f_op->release(f->f_inode, f);
 		kfree(f);

@@ -154,12 +154,56 @@ struct process *process_create(const void *elf_data, size_t elf_size)
 	return proc;
 }
 
+/*
+ * Walk and free the user-half (PML4[0..255]) page tables and all
+ * mapped user pages.  Kernel-half entries are shared and not touched.
+ */
+static void vmm_destroy_user_tables(uint64_t pml4_phys)
+{
+	uint64_t h = vmm_get_hhdm();
+	uint64_t *pml4 = (uint64_t *)(h + pml4_phys);
+
+	for (int i4 = 0; i4 < 256; i4++) {
+		if (!(pml4[i4] & VMM_PRESENT))
+			continue;
+		uint64_t *pdpt = (uint64_t *)(h + (pml4[i4] & 0x000FFFFFFFFFF000ULL));
+
+		for (int i3 = 0; i3 < 512; i3++) {
+			if (!(pdpt[i3] & VMM_PRESENT))
+				continue;
+			uint64_t *pd = (uint64_t *)(h + (pdpt[i3] & 0x000FFFFFFFFFF000ULL));
+
+			for (int i2 = 0; i2 < 512; i2++) {
+				if (!(pd[i2] & VMM_PRESENT))
+					continue;
+				uint64_t *pt = (uint64_t *)(h + (pd[i2] & 0x000FFFFFFFFFF000ULL));
+
+				for (int i1 = 0; i1 < 512; i1++) {
+					if (!(pt[i1] & VMM_PRESENT))
+						continue;
+					uint64_t page_phys = pt[i1] & 0x000FFFFFFFFFF000ULL;
+					pmm_free_page((void *)(h + page_phys));
+				}
+				/* Free the PT page */
+				pmm_free_page(pt);
+			}
+			/* Free the PD page */
+			pmm_free_page(pd);
+		}
+		/* Free the PDPT page */
+		pmm_free_page(pdpt);
+	}
+	/* Free the PML4 page itself */
+	pmm_free_page(pml4);
+}
+
 void process_destroy(struct process *proc)
 {
 	if (!proc)
 		return;
 	process_fd_cleanup(proc);
-	/* TODO: tear down user-half page tables, free all user pages */
+	if (proc->cr3)
+		vmm_destroy_user_tables(proc->cr3);
 	kfree(proc);
 }
 

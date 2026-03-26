@@ -111,6 +111,25 @@ config TESTS_FUZZ
 	bool "Fuzz tests"
 	default y
 
+config TESTS_PCI
+	bool "PCI bus tests"
+	default y
+	depends on PCI
+
+config TESTS_RTC
+	bool "RTC clock tests"
+	default y
+
+config TESTS_ATA
+	bool "ATA driver tests"
+	default y
+	depends on ATA
+
+config TESTS_PARTITION
+	bool "Partition table tests"
+	default y
+	depends on ATA && PARTITION_MBR
+
 endmenu
 
 menu "Post-boot test categories"
