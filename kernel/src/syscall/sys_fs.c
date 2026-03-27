@@ -40,9 +40,12 @@ long sys_write(long fd, long buf_addr, long count, long a3, long a4, long a5) {
   (void)a4;
   (void)a5;
 
-  if (count < 0) return -EINVAL;
-  if (count == 0) return 0;
-  if (count > WRITE_MAX) count = WRITE_MAX;
+  if (count < 0)
+    return -EINVAL;
+  if (count == 0)
+    return 0;
+  if (count > WRITE_MAX)
+    count = WRITE_MAX;
 
   if (!uaccess_valid((const void *)buf_addr, (size_t)count)) {
     klog(KLOG_INFO, "sys_write: !uaccess_valid\n");
@@ -121,61 +124,83 @@ long sys_close(long fd, long a1, long a2, long a3, long a4, long a5) {
 }
 
 struct iovec {
-	void *iov_base;
-	size_t iov_len;
+  void *iov_base;
+  size_t iov_len;
 };
 
 long sys_readv(long fd, long iov_addr, long iovcnt, long a3, long a4, long a5) {
-	if (iovcnt < 0 || iovcnt > 1024) return -EINVAL;
-	if (iovcnt == 0) return 0;
-	if (!uaccess_valid((void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec)))
-		return -EFAULT;
-	struct iovec *iov = (struct iovec *)iov_addr;
-	long total = 0;
-	for (long i = 0; i < iovcnt; i++) {
-		long ret = sys_read(fd, (long)iov[i].iov_base, (long)iov[i].iov_len, a3, a4, a5);
-		if (ret < 0) {
-			if (total > 0) return total;
-			return ret;
-		}
-		total += ret;
-		if ((size_t)ret < iov[i].iov_len) break; /* short read */
-	}
-	return total;
+  if (iovcnt < 0 || iovcnt > 1024)
+    return -EINVAL;
+  if (iovcnt == 0)
+    return 0;
+  if (!uaccess_valid((void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec)))
+    return -EFAULT;
+  struct iovec *iov = (struct iovec *)iov_addr;
+  long total = 0;
+  for (long i = 0; i < iovcnt; i++) {
+    long ret =
+        sys_read(fd, (long)iov[i].iov_base, (long)iov[i].iov_len, a3, a4, a5);
+    if (ret < 0) {
+      if (total > 0)
+        return total;
+      return ret;
+    }
+    total += ret;
+    if ((size_t)ret < iov[i].iov_len)
+      break; /* short read */
+  }
+  return total;
 }
 
-long sys_writev(long fd, long iov_addr, long iovcnt, long a3, long a4, long a5) {
-	if (iovcnt < 0 || iovcnt > 1024) return -EINVAL;
-	if (iovcnt == 0) return 0;
-	if (!uaccess_valid((void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec))) {
-		return -EFAULT;
-	}
-	struct iovec *iov = (struct iovec *)iov_addr;
-	long total = 0;
-	for (long i = 0; i < iovcnt; i++) {
-		long ret = sys_write(fd, (long)iov[i].iov_base, (long)iov[i].iov_len, a3, a4, a5);
-		if (ret < 0) {
-			if (total > 0) return total;
-			return ret;
-		}
-		total += ret;
-		if ((size_t)ret < iov[i].iov_len) break; /* short write */
-	}
-	return total;
+long sys_writev(long fd, long iov_addr, long iovcnt, long a3, long a4,
+                long a5) {
+  if (iovcnt < 0 || iovcnt > 1024)
+    return -EINVAL;
+  if (iovcnt == 0)
+    return 0;
+  if (!uaccess_valid((void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec))) {
+    return -EFAULT;
+  }
+  struct iovec *iov = (struct iovec *)iov_addr;
+  long total = 0;
+  for (long i = 0; i < iovcnt; i++) {
+    long ret =
+        sys_write(fd, (long)iov[i].iov_base, (long)iov[i].iov_len, a3, a4, a5);
+    if (ret < 0) {
+      if (total > 0)
+        return total;
+      return ret;
+    }
+    total += ret;
+    if ((size_t)ret < iov[i].iov_len)
+      break; /* short write */
+  }
+  return total;
 }
 
 long sys_ioctl(long fd, long cmd, long arg, long a3, long a4, long a5) {
-	(void)cmd; (void)arg; (void)a3; (void)a4; (void)a5;
-	struct file *f = fd_get((int)fd);
-	if (!f) return -EBADF;
-	/* We don't support TTY ioctls yet, musl handles ENOTTY smoothly */
-	return -ENOTTY;
+  (void)arg;
+  (void)a3;
+  (void)a4;
+  (void)a5;
+  struct file *f = fd_get((int)fd);
+  if (!f)
+    return -EBADF;
+
+  /* 0x5401 is TCGETS, 0x5413 is TIOCGWINSZ
+   * Faking success for standard TTY ioctls allows isatty() to return true */
+  if ((cmd & 0xff00) == 0x5400) {
+    return 0;
+  }
+
+  return -ENOTTY;
 }
 
-long sys_openat(long dirfd, long path_addr, long flags, long mode, long a4, long a5)
-{
-	(void)a4; (void)a5;
-	/* AT_FDCWD (-100) means use current working directory (treat as absolute) */
-	(void)dirfd;
-	return sys_open(path_addr, flags, mode, 0, 0, 0);
+long sys_openat(long dirfd, long path_addr, long flags, long mode, long a4,
+                long a5) {
+  (void)a4;
+  (void)a5;
+  /* AT_FDCWD (-100) means use current working directory (treat as absolute) */
+  (void)dirfd;
+  return sys_open(path_addr, flags, mode, 0, 0, 0);
 }

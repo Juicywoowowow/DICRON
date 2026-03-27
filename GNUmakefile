@@ -170,8 +170,8 @@ endif # CONFIG_TESTS
 # ── Combine all sources ──
 C_SRCS  := $(CORE_SRCS) $(TEST_SRCS)
 
-# ── User program ──
-USER_ELF := $(BUILD_DIR)/user/hello_musl.elf
+# ── User program (Lua) ──
+USER_ELF := $(BUILD_DIR)/user/lua.elf
 INITRD   := $(BUILD_DIR)/initrd.cpio
 
 C_OBJS  := $(patsubst %.c, $(BUILD_DIR)/obj/%.o, $(C_SRCS))
@@ -209,11 +209,12 @@ menuconfig:
 oldconfig:
 	@python3 tools/genconfig.py oldconfig
 
-# ── Build user program ──
-$(USER_ELF): user/hello_musl.c user/linker.lds
+# ── Build user program (Lua) ──
+$(USER_ELF):
 	@mkdir -p $(dir $@)
-	@echo "  MUSL-CC $@"
-	@musl-install/bin/musl-gcc -O2 -static -fno-pie -no-pie -Wl,-T,user/linker.lds -o $@ user/hello_musl.c
+	@echo "  MUSL-CC $@ (Lua)"
+	@cd user/lua && make clean && make all CC="../../musl-install/bin/musl-gcc -O2 -static -fno-pie -no-pie -Wl,-T,../linker.lds"
+	@cp user/lua/lua $@
 
 # Build initrd cpio archive with /init
 $(INITRD): $(USER_ELF)
