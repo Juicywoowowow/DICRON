@@ -1,6 +1,7 @@
 # Build artifacts
 build/
 *.o
+user/lua/lua
 # Musl cross-compiler
 /musl/
 /musl-install/
