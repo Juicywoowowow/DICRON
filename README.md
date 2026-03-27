@@ -52,11 +52,27 @@ COMPILATION AND DEPLOYMENT
      $ make install
      $ cd ..
 
-  4. Configuring the Kernel
+  4. Building and Embedding Lua (Userspace)
+     DICRON natively supports executing the interactive Lua environment. Due to kernel
+     XSAVE capability bounds, you MUST disable the `-march=native` compiler flag inside
+     Lua's Makefile to prevent emission of unsupported AVX instructions.
+     
+     If you clone Lua explicitly into the project's `user/` directory, the build
+     system will automatically compile it and package it into `initrd.cpio`:
+     $ cd user
+     $ git clone https://github.com/lua/lua.git
+     $ sed -i 's/-march=native//g' lua/Makefile
+     $ cd ..
+     
+     Alternatively, if you possess a pre-built custom `.cpio` containing your system
+     applications, you may pass it dynamically during deployment:
+     $ make run INITRD=/path/to/my.cpio
+
+  5. Configuring the Kernel
      The system employs a rigid Kconfig-like structure utilizing GNU make semantics.
      $ make menuconfig
 
-  5. Building the OS Image
+  6. Building the OS Image
      Compilation will dynamically resolve local dependencies, inject Limine boot 
      structures, and produce an ISO functional directly inside QEMU.
      $ make run

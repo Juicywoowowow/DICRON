@@ -4,19 +4,35 @@
 #include <stdarg.h>
 #include <generated/autoconf.h>
 
-#ifndef CONFIG_KLOG_LEVEL
-#define CONFIG_KLOG_LEVEL KLOG_INFO
-#endif
-
-static int log_level = CONFIG_KLOG_LEVEL;
-
 static const char *level_str[] = {
 	"EMERG", "ERR", "WARN", "INFO", "DEBUG"
 };
 
+static int level_enabled(int level)
+{
+	switch (level) {
+#ifdef CONFIG_KLOG_SHOW_EMERG
+	case KLOG_EMERG: return 1;
+#endif
+#ifdef CONFIG_KLOG_SHOW_ERR
+	case KLOG_ERR:   return 1;
+#endif
+#ifdef CONFIG_KLOG_SHOW_WARN
+	case KLOG_WARN:  return 1;
+#endif
+#ifdef CONFIG_KLOG_SHOW_INFO
+	case KLOG_INFO:  return 1;
+#endif
+#ifdef CONFIG_KLOG_SHOW_DEBUG
+	case KLOG_DEBUG: return 1;
+#endif
+	default: return 0;
+	}
+}
+
 void klog(int level, const char *fmt, ...)
 {
-	if (level > log_level)
+	if (!level_enabled(level))
 		return;
 
 	char buf[1024];

@@ -60,6 +60,9 @@ ifndef CONFIG_EXT2_SYNC
 endif
 endif
 # ── New Drivers ──
+ifdef CONFIG_HPET
+  CORE_SRCS += $(wildcard kernel/src/drivers/new/hpet/*.c)
+endif
 ifdef CONFIG_ATA
   CORE_SRCS += $(wildcard kernel/src/drivers/new/ata/*.c)
 endif
@@ -130,6 +133,9 @@ ifdef CONFIG_TESTS_BOOT
   ifdef CONFIG_TESTS_TIMER
     TEST_SRCS += $(wildcard kernel/src/tests/test_timer_*.c)
   endif
+  ifdef CONFIG_TESTS_HPET
+    TEST_SRCS += $(wildcard kernel/src/tests/test_hpet_*.c)
+  endif
   ifdef CONFIG_TESTS_KSTACK
     TEST_SRCS += $(wildcard kernel/src/tests/test_kstack*.c)
   endif
@@ -172,7 +178,7 @@ C_SRCS  := $(CORE_SRCS) $(TEST_SRCS)
 
 # ── User program (Lua) ──
 USER_ELF := $(BUILD_DIR)/user/lua.elf
-INITRD   := $(BUILD_DIR)/initrd.cpio
+INITRD   ?= $(BUILD_DIR)/initrd.cpio
 
 C_OBJS  := $(patsubst %.c, $(BUILD_DIR)/obj/%.o, $(C_SRCS))
 A_OBJS  := $(patsubst %.asm, $(BUILD_DIR)/obj/%.o, $(A_SRCS))
@@ -212,16 +218,19 @@ oldconfig:
 # ── Build user program (Lua) ──
 $(USER_ELF):
 	@mkdir -p $(dir $@)
-	@echo "  MUSL-CC $@ (Lua)"
-	@cd user/lua && make clean && make all CC="../../musl-install/bin/musl-gcc -O2 -static -fno-pie -no-pie -Wl,-T,../linker.lds"
-	@cp user/lua/lua $@
+	@if [ -d "user/lua" ]; then \
+		echo "  MUSL-CC $@ (Lua)"; \
+		cd user/lua && make clean && make all CC="../../musl-install/bin/musl-gcc -O2 -static -fno-pie -no-pie -Wl,-T,../linker.lds" && cp lua ../../$@; \
+	else \
+		echo "  SKIP    user/lua not found. Bring your own INITRD or clone Lua."; \
+	fi
 
 # Build initrd cpio archive with /init
-$(INITRD): $(USER_ELF)
+$(BUILD_DIR)/initrd.cpio: $(USER_ELF)
 	@mkdir -p $(dir $@)
 	@rm -rf $(BUILD_DIR)/initrd_root
 	@mkdir -p $(BUILD_DIR)/initrd_root
-	@cp $(USER_ELF) $(BUILD_DIR)/initrd_root/init
+	@if [ -f "$(USER_ELF)" ]; then cp $(USER_ELF) $(BUILD_DIR)/initrd_root/init; fi
 	@echo "  CPIO    $@"
 	@cd $(BUILD_DIR)/initrd_root && find . | cpio -o -H newc --quiet > ../initrd.cpio
 

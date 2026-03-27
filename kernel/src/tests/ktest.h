@@ -43,8 +43,12 @@ extern struct ktest_stats ktest_stats;
 /* ── suite begin ── */
 #ifdef CONFIG_TESTS_SHOW_VERBOSE
 #define KTEST_BEGIN(suite_name) kio_printf("\n--- %s ---\n", (suite_name))
+#define KTEST_PERF(fmt, ...) kio_printf("  [PERF] " fmt "\n", ##__VA_ARGS__)
 #else
 #define KTEST_BEGIN(suite_name)                                                \
+  do {                                                                         \
+  } while (0)
+#define KTEST_PERF(fmt, ...)                                                   \
   do {                                                                         \
   } while (0)
 #endif

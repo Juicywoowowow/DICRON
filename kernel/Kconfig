@@ -26,29 +26,28 @@ config VERBOSE_SYSCALL
 	  Log warnings for unimplemented and out-of-bounds syscalls.
 	  Useful for debugging, noisy in production.
 
-choice
-	prompt "Kernel log level"
-	default KLOG_LEVEL_INFO
+menu "Kernel log levels"
 
-config KLOG_LEVEL_ERR
-	bool "Errors only"
+config KLOG_SHOW_EMERG
+	bool "Show EMERG messages"
+	default y
 
-config KLOG_LEVEL_WARN
-	bool "Warnings and errors"
+config KLOG_SHOW_ERR
+	bool "Show ERR messages"
+	default y
 
-config KLOG_LEVEL_INFO
-	bool "Info, warnings, and errors"
+config KLOG_SHOW_WARN
+	bool "Show WARN messages"
+	default y
 
-config KLOG_LEVEL_DEBUG
-	bool "Debug, info, warnings, and errors"
+config KLOG_SHOW_INFO
+	bool "Show INFO messages"
+	default y
 
-endchoice
+config KLOG_SHOW_DEBUG
+	bool "Show DEBUG messages"
+	default n
 
-config KLOG_LEVEL
-	int
-	default 1 if KLOG_LEVEL_ERR
-	default 2 if KLOG_LEVEL_WARN
-	default 3 if KLOG_LEVEL_INFO
-	default 4 if KLOG_LEVEL_DEBUG
+endmenu
 
 endmenu

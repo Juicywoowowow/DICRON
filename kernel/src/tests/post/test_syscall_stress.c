@@ -15,8 +15,9 @@ static void ktest_syscall_stress(void)
 		syscall_dispatch(__NR_write, 1, 0, 0, 0, 0, 0);
 
 	uint64_t t_end = ktime_ms();
+	(void)t_start; (void)t_end;
 	KTEST_TRUE(1, "stress: 10000 write dispatches survived");
-	kio_printf("  [PERF] 10000 syscall dispatches: %lu ms\n", (t_end - t_start));
+	KTEST_PERF("10000 syscall dispatches: %lu ms", (t_end - t_start));
 
 	/* Stress bad numbers — verify no crash.
 	   Use write(fd=1,NULL,0) for valid ones, only a few bad ones

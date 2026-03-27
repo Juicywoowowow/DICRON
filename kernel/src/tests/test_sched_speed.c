@@ -26,9 +26,9 @@ static void ktest_sched_speed(void)
 	for (int i = 0; i < SPEED_BATCH; i++)
 		kthread_free(threads[i]);
 	uint64_t t2 = ktime_ms();
+	(void)t1; (void)t2;
 
-	kio_printf("  [PERF] %d kthread create+free: %lu ms\n",
-		   SPEED_BATCH, (t2 - t1));
+	KTEST_PERF("%d kthread create+free: %lu ms", SPEED_BATCH, (t2 - t1));
 	KTEST_TRUE(1, "speed: create/free benchmark ran");
 
 	/* --- benchmark 2: MLFQ enqueue + pick_next cycle --- */
@@ -44,9 +44,9 @@ static void ktest_sched_speed(void)
 		(void)t;
 	}
 	uint64_t t4 = ktime_ms();
+	(void)t3; (void)t4;
 
-	kio_printf("  [PERF] %d MLFQ enqueue+pick: %lu ms\n",
-		   SPEED_BATCH, (t4 - t3));
+	KTEST_PERF("%d MLFQ enqueue+pick: %lu ms", SPEED_BATCH, (t4 - t3));
 	KTEST_TRUE(1, "speed: MLFQ cycle benchmark ran");
 
 	for (int i = 0; i < SPEED_BATCH; i++)
@@ -62,9 +62,9 @@ static void ktest_sched_speed(void)
 	uint64_t t5 = ktime_ms();
 	mlfq_boost_all();
 	uint64_t t6 = ktime_ms();
+	(void)t5; (void)t6;
 
-	kio_printf("  [PERF] boost %d scattered tasks: %lu ms\n",
-		   SPEED_BATCH, (t6 - t5));
+	KTEST_PERF("boost %d scattered tasks: %lu ms", SPEED_BATCH, (t6 - t5));
 	KTEST_TRUE(1, "speed: boost benchmark ran");
 
 	/* Drain and free */

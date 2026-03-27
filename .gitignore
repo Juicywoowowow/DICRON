@@ -1,7 +1,7 @@
 # Build artifacts
 build/
 *.o
-user/lua/lua
+user/lua/
 # Musl cross-compiler
 /musl/
 /musl-install/
@@ -36,6 +36,7 @@ kernel/include/generated/
 # Debug artifacts
 dicron.objdump
 dicron.sym
+objdump.txt
 
 
 # Plan docs

@@ -99,6 +99,11 @@ config TESTS_TIMER
 	bool "Timer tests"
 	default y
 
+config TESTS_HPET
+	bool "HPET tests"
+	default y
+	depends on HPET
+
 config TESTS_KSTACK
 	bool "Kernel stack tests"
 	default y

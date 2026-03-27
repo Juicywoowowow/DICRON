@@ -54,6 +54,13 @@ menu "New Drivers"
 
 comment "Functional but subject to change — enable individually"
 
+config HPET
+	bool "HPET timer"
+	default n
+	help
+	  High Precision Event Timer (HPET) support. Includes nanosecond 
+	  timing API. Replaces the PIT timer.
+
 menu "ATA / Disk"
 
 config ATA

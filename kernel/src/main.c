@@ -9,6 +9,7 @@
 #include "drivers/serial/com.h"
 #include "drivers/ps2/kbd.h"
 #include "drivers/timer/pit.h"
+#include "drivers/new/hpet/hpet.h"
 #include "drivers/timer/rtc.h"
 #ifdef CONFIG_PCI
 #include "drivers/pci/pci.h"
@@ -24,6 +25,7 @@
 #include <dicron/log.h>
 #include <dicron/panic.h>
 #include <dicron/time.h>
+#include <dicron/acpi.h>
 #include <dicron/sched.h>
 #include <dicron/syscall.h>
 #include <dicron/process.h>
@@ -60,6 +62,12 @@ static volatile struct limine_hhdm_request hhdm_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_module_request module_request = {
 	.id = LIMINE_MODULE_REQUEST_ID,
+	.revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_rsdp_request rsdp_request = {
+	.id = LIMINE_RSDP_REQUEST_ID,
 	.revision = 0
 };
 
@@ -114,6 +122,9 @@ void kmain(void)
 
 	serial_init();
 	kbd_init();
+	acpi_init(rsdp_request.response ? rsdp_request.response->address : NULL,
+		  hhdm_request.response->offset);
+	hpet_init();
 	pit_init();
 	rtc_init();
 #ifdef CONFIG_PCI
