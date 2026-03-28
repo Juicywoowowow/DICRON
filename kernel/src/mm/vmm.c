@@ -230,3 +230,32 @@ void vmm_unmap_page_in(uint64_t pml4_phys, uint64_t virt)
 	if (pte)
 		*pte = 0;
 }
+
+/*
+ * Read the raw PTE for a virtual address in the given address space.
+ * Returns 0 if the page tables do not exist for that address.
+ * Does NOT skip not-present entries — the raw value is returned as-is,
+ * so callers can inspect swap-encoded PTEs (Present bit = 0).
+ */
+uint64_t vmm_read_pte_in(uint64_t pml4_phys, uint64_t virt)
+{
+	uint64_t *pte = vmm_walk_at(pml4_phys, virt, 0);
+	if (!pte)
+		return 0;
+	return *pte;
+}
+
+/*
+ * Write a raw PTE value for a virtual address in the given address space.
+ * Flushes the TLB entry for that address afterward.
+ * Does nothing if the page tables for that address do not exist.
+ * Used by the swap eviction path to store slot info in a not-present PTE.
+ */
+void vmm_write_pte_in(uint64_t pml4_phys, uint64_t virt, uint64_t raw_pte)
+{
+	uint64_t *pte = vmm_walk_at(pml4_phys, virt, 0);
+	if (!pte)
+		return;
+	*pte = raw_pte;
+	__asm__ volatile("invlpg (%0)" : : "r"(virt) : "memory");
+}

@@ -4,6 +4,11 @@
 #include <dicron/panic.h>
 #include <dicron/io.h>
 #include <dicron/spinlock.h>
+#include <generated/autoconf.h>
+
+#ifdef CONFIG_SWAP
+#include "swap.h"
+#endif
 
 /*
  * Buddy page allocator.
@@ -185,6 +190,14 @@ void *pmm_alloc_pages(unsigned int order)
 	}
 
 	spin_unlock_irqrestore(&pmm_lock, flags);
+
+#ifdef CONFIG_SWAP
+	/* OOM — try to reclaim a page via swap and retry once */
+	if (swap_try_reclaim(order) != NULL) {
+		return pmm_alloc_pages(order);
+	}
+#endif
+
 	return NULL;
 }
 

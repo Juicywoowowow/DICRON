@@ -23,4 +23,11 @@ int      vmm_map_page_in(uint64_t pml4_phys, uint64_t virt, uint64_t phys, uint6
 uint64_t vmm_virt_to_phys_in(uint64_t pml4_phys, uint64_t virt);
 void     vmm_unmap_page_in(uint64_t pml4_phys, uint64_t virt);
 
+/*
+ * Raw PTE access — reads/writes page table entries without interpreting them.
+ * Used by the swap subsystem to encode/decode swap slots in not-present PTEs.
+ */
+uint64_t vmm_read_pte_in(uint64_t pml4_phys, uint64_t virt);
+void     vmm_write_pte_in(uint64_t pml4_phys, uint64_t virt, uint64_t raw_pte);
+
 #endif

@@ -125,6 +125,11 @@ config TESTS_RTC
 	bool "RTC clock tests"
 	default y
 
+config TESTS_SWAP
+	bool "Swap subsystem tests"
+	default y
+	depends on SWAP
+
 config TESTS_ATA
 	bool "ATA driver tests"
 	default y
@@ -134,6 +139,22 @@ config TESTS_PARTITION
 	bool "Partition table tests"
 	default y
 	depends on ATA && PARTITION_MBR
+
+config TESTS_PCSPEAKER
+	bool "PC Speaker / PIT channel 2 tests"
+	default y
+	depends on PCSPEAKER
+	help
+	  Tests for PC speaker frequency programming, gate-bit manipulation,
+	  panic-beep sequence, and init/stop idempotency.
+
+config TESTS_VIRTIO_BLK
+	bool "Virtio block device tests"
+	default y
+	depends on VIRTIO_BLK
+	help
+	  Tests for virtio-blk device enumeration, blkdev field validation,
+	  capacity reporting, bounds checking, and null-input error handling.
 
 endmenu
 

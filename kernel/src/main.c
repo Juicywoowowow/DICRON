@@ -21,6 +21,10 @@
 #include "drivers/ext2/ext2.h"
 #endif
 #endif
+#ifdef CONFIG_SWAP
+#include "mm/zram.h"
+#include "mm/swap.h"
+#endif
 #include <dicron/io.h>
 #include <dicron/log.h>
 #include <dicron/panic.h>
@@ -174,6 +178,21 @@ void kmain(void)
 		}
 	}
 #endif /* CONFIG_ATA */
+
+#ifdef CONFIG_SWAP
+	/* Initialize swap subsystem: ZRAM always, disk swap only if ATA present */
+	zram_init();
+	{
+		struct blkdev *swap_blkdev = NULL;
+#ifdef CONFIG_ATA
+		if (ata_drive_count() > 0) {
+			struct ata_drive *drv = ata_get_drive(0);
+			swap_blkdev = ata_blkdev_create(drv);
+		}
+#endif
+		swap_init(swap_blkdev);
+	}
+#endif /* CONFIG_SWAP */
 
 	klog(KLOG_INFO, "PMM: %lu free / %lu total pages (%lu KiB free)\n",
 	     pmm_free_pages_count(), pmm_total_pages_count(),

@@ -48,11 +48,43 @@ config PCI
 	  Scan and enumerate PCI devices at boot.
 	  Required for AHCI, NIC, and most modern hardware.
 
+config PCSPEAKER
+	bool "PC Speaker / PIT channel 2 driver"
+	default y
+	depends on PIT
+	help
+	  Drive the PC speaker via PIT channel 2 (port 0x42/0x43) and
+	  the system control port (0x61).  Emits a short beep on boot and
+	  a descending three-tone sequence on kernel panic.
+	  Uses HPET for timing when CONFIG_HPET is enabled; falls back to
+	  a calibrated busy-loop otherwise.
+
 endmenu
 
 menu "New Drivers"
 
 comment "Functional but subject to change — enable individually"
+
+config VIRTIO_BLK
+	bool "Virtio block device driver"
+	default n
+	depends on PCI
+	help
+	  Legacy virtio-blk PCI driver for QEMU virtio disk images.
+	  Performs synchronous polled I/O via virtqueue 0.
+	  Supports up to 4 virtio-blk disks per QEMU instance.
+	  Requires PCI enumeration (CONFIG_PCI).
+
+config TEST_VIRTIO_DRIVE
+	bool "Create temporary virtio-blk disk for QEMU testing"
+	default n
+	depends on VIRTIO_BLK
+	help
+	  When enabled, the QEMU run targets (run / setram / ranmem) will
+	  automatically create an 8 MB raw disk image, attach it to QEMU
+	  as a virtio-blk device, and delete the image when QEMU exits.
+	  Useful for exercising the virtio-blk driver against a real
+	  (emulated) disk without keeping a permanent image around.
 
 config HPET
 	bool "HPET timer"

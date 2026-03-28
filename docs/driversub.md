@@ -158,6 +158,17 @@ endif
 
 ---
 
+## Graduation Candidates
+
+Drivers in `new/` that are close to stable and have been flagged for a future
+graduation review. Check the listed blockers before performing the move.
+
+| Driver | Folder | Flagged | Blockers before Stable |
+|---|---|---|---|
+| HPET | `drivers/new/hpet/` | 2026-03-27 | (1) `ktime_ms`/`ksleep_ms` live behind `#ifndef CONFIG_PIT` inside the driver — needs a time-abstraction layer instead. (2) `acpi_hpet_table` struct defined in `hpet.c` — move to shared ACPI header when ACPI subsystem matures. (3) Only one MMIO page mapped — guard against multi-page register space. (4) Tests reach into `hpet_internal.h` directly — expose an accessor instead. |
+
+---
+
 ## Demotion
 
 If a stable or new driver becomes unmaintained, broken, or is superseded:

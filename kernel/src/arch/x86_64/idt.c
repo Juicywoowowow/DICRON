@@ -1,9 +1,12 @@
 #include "idt.h"
 #include "io.h"
+#include "mm/swap.h"
+#include "mm/vmm.h"
 #include <dicron/sched.h>
 #include <dicron/io.h>
 #include <dicron/log.h>
 #include <dicron/panic.h>
+#include <generated/autoconf.h>
 #include <stddef.h>
 
 #define IDT_ENTRIES 256
@@ -102,6 +105,18 @@ static void page_fault_handler(struct idt_frame *frame)
 	__asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
 
 	int from_user = (frame->cs & 3) == 3;
+
+#ifdef CONFIG_SWAP
+	/*
+	 * Before treating the fault as fatal, check whether the faulting
+	 * address was swap-evicted.  swap_pf_handle() reads the raw PTE:
+	 * if it carries a swap marker it allocates a frame, reads the page
+	 * back from ZRAM or disk, writes a new present PTE, and returns 1.
+	 * Execution then retries the faulting instruction transparently.
+	 */
+	if (swap_pf_handle(cr2, vmm_get_cr3()))
+		return;
+#endif
 
 	kio_printf("\n[!!!] PAGE FAULT%s\n", from_user ? " (userspace)" : " (kernel)");
 	kio_printf("  Address: 0x%016lx\n", cr2);

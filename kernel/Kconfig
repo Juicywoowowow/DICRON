@@ -13,6 +13,22 @@ config SSE
 	help
 	  Enable SSE/SSE2 in the kernel for user programs.
 
+config SWAP
+	bool "Enable swap support (ZRAM + disk)"
+	default y
+	help
+	  Cooperative page reclaim via ZRAM (compressed RAM) and
+	  optional disk swap (tail-of-ATA-disk).  When enabled,
+	  PMM OOM triggers swap_try_reclaim() before giving up.
+
+config ZRAM
+	bool "Enable ZRAM (compressed RAM swap)"
+	default y
+	depends on SWAP
+	help
+	  Compress reclaimable pages into kernel heap using LZO.
+	  Works even without a disk.  Effective for mostly-zero pages.
+
 config INITRD
 	bool "Load initrd from Limine module"
 	default y
