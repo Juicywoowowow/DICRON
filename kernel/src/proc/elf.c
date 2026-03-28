@@ -4,6 +4,10 @@
 #include "mm/pmm.h"
 #include "lib/string.h"
 
+#ifdef CONFIG_SWAP
+#include "mm/swap.h"
+#endif
+
 /*
  * elf.c — ELF64 validation and loading.
  */
@@ -133,6 +137,10 @@ uint64_t elf64_load_into(const void *data, size_t size,
 				size_t page_off = (size_t)(cs - va);
 				memcpy((uint8_t *)page + page_off, raw + file_off, copy_len);
 			}
+
+#ifdef CONFIG_SWAP
+			swap_register_mapped(page, va, pml4_phys);
+#endif
 		}
 
 		if (vaddr_end > highest)

@@ -8,6 +8,13 @@
 #include "arch/x86_64/tss.h"
 #include "lib/string.h"
 
+#ifdef CONFIG_SWAP
+#include "mm/swap.h"
+#ifdef CONFIG_ZRAM
+#include "mm/zram.h"
+#endif
+#endif
+
 /*
  * process.c — Process creation and management.
  *
@@ -75,6 +82,10 @@ struct process *process_create(const void *elf_data, size_t elf_size)
 		return NULL;
 
 	proc->pid = next_pid++;
+	if (next_pid <= 0) {
+		klog(KLOG_WARN, "PID wrap-around occurred\n");
+		next_pid = 1;
+	}
 
 	/* Create a new address space */
 	proc->cr3 = vmm_create_user_pml4();
@@ -134,6 +145,9 @@ struct process *process_create(const void *elf_data, size_t elf_size)
 
 		uint64_t phys = (uint64_t)page - hhdm;
 		vmm_map_page_in(proc->cr3, va, phys, VMM_PRESENT | VMM_WRITE | VMM_USER | VMM_NX);
+#ifdef CONFIG_SWAP
+		swap_register_mapped(page, va, proc->cr3);
+#endif
 	}
 	proc->stack_top = initial_rsp;
 
@@ -179,10 +193,28 @@ static void vmm_destroy_user_tables(uint64_t pml4_phys)
 				uint64_t *pt = (uint64_t *)(h + (pd[i2] & 0x000FFFFFFFFFF000ULL));
 
 				for (int i1 = 0; i1 < 512; i1++) {
-					if (!(pt[i1] & VMM_PRESENT))
+					if (!(pt[i1] & VMM_PRESENT)) {
+#ifdef CONFIG_SWAP
+						if (swap_pte_is_swap(pt[i1])) {
+							int is_disk = (pt[i1] & SWAP_PTE_DISK) != 0;
+							int slot = swap_pte_slot(pt[i1]);
+							if (is_disk) {
+								swap_free_slot(slot);
+							} else {
+#ifdef CONFIG_ZRAM
+								zram_free_slot(slot);
+#endif
+							}
+						}
+#endif
 						continue;
+					}
 					uint64_t page_phys = pt[i1] & 0x000FFFFFFFFFF000ULL;
-					pmm_free_page((void *)(h + page_phys));
+					void *page_hhdm = (void *)(h + page_phys);
+#ifdef CONFIG_SWAP
+					swap_unregister(page_hhdm);
+#endif
+					pmm_free_page(page_hhdm);
 				}
 				/* Free the PT page */
 				pmm_free_page(pt);

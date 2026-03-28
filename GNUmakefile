@@ -315,12 +315,15 @@ ifdef CONFIG_TEST_VIRTIO_DRIVE
 	@bash tools/mk-test-virtio.sh $(TEST_VIRTIO_IMG) 8
 endif
 
+QEMU_AUDIO_FLAGS := -audiodev dsound,id=snd0 -machine pcspk-audiodev=snd0
+
 run: iso test-ata-img test-virtio-img
 	qemu-system-x86_64 \
 		-M q35 \
 		-cdrom $(ISO) \
 		$(QEMU_ATA_FLAGS) \
 		$(QEMU_VIRTIO_FLAGS) \
+		$(QEMU_AUDIO_FLAGS) \
 		-serial stdio \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log

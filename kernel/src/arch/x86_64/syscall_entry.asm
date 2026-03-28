@@ -53,7 +53,6 @@ syscall_entry:
     ; Have:   RAX  RDI  RSI  RDX  R10  R8   R9
     
     ; Setup arguments to syscall_dispatch
-    ; Wait, the arguments are currently on the stack from our push!
     ; [rsp]    = r9
     ; [rsp+8]  = r8
     ; [rsp+16] = r10

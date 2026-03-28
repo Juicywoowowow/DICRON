@@ -8,6 +8,8 @@
 
 #define WRITE_MAX (1024 * 1024)
 
+#define READ_MAX (1024 * 1024)
+
 long sys_read(long fd, long buf_addr, long count, long a3, long a4, long a5) {
   (void)a3;
   (void)a4;
@@ -17,6 +19,8 @@ long sys_read(long fd, long buf_addr, long count, long a3, long a4, long a5) {
     return -EINVAL;
   if (count == 0)
     return 0;
+  if (count > READ_MAX)
+    count = READ_MAX;
 
   if (!uaccess_valid((void *)buf_addr, (size_t)count))
     return -EFAULT;
@@ -77,10 +81,19 @@ long sys_open(long path_addr, long flags, long mode, long a3, long a4,
   (void)a4;
   (void)a5;
 
-  if (!uaccess_valid((const void *)path_addr, 1))
+  if (!uaccess_valid_string((const char *)path_addr, 4096))
     return -EFAULT;
-  /* Assume safe for now */
-  const char *path = (const char *)path_addr;
+  
+  char kpath[4096];
+  const char *u_path = (const char *)path_addr;
+  size_t klimit = 4095;
+  size_t i = 0;
+  while (i < klimit && u_path[i] != '\0') {
+    kpath[i] = u_path[i];
+    i++;
+  }
+  kpath[i] = '\0';
+  const char *path = kpath;
 
   struct inode *inode = vfs_namei(path);
   if (!inode) {
@@ -129,24 +142,25 @@ struct iovec {
 };
 
 long sys_readv(long fd, long iov_addr, long iovcnt, long a3, long a4, long a5) {
-  if (iovcnt < 0 || iovcnt > 1024)
+  if (iovcnt < 0 || iovcnt > 128)
     return -EINVAL;
   if (iovcnt == 0)
     return 0;
-  if (!uaccess_valid((void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec)))
+  
+  struct iovec kiov[128];
+  if (copy_from_user(kiov, (void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec)) < 0)
     return -EFAULT;
-  struct iovec *iov = (struct iovec *)iov_addr;
+
   long total = 0;
   for (long i = 0; i < iovcnt; i++) {
-    long ret =
-        sys_read(fd, (long)iov[i].iov_base, (long)iov[i].iov_len, a3, a4, a5);
+    long ret = sys_read(fd, (long)kiov[i].iov_base, (long)kiov[i].iov_len, a3, a4, a5);
     if (ret < 0) {
       if (total > 0)
         return total;
       return ret;
     }
     total += ret;
-    if ((size_t)ret < iov[i].iov_len)
+    if ((size_t)ret < kiov[i].iov_len)
       break; /* short read */
   }
   return total;
@@ -154,25 +168,25 @@ long sys_readv(long fd, long iov_addr, long iovcnt, long a3, long a4, long a5) {
 
 long sys_writev(long fd, long iov_addr, long iovcnt, long a3, long a4,
                 long a5) {
-  if (iovcnt < 0 || iovcnt > 1024)
+  if (iovcnt < 0 || iovcnt > 128)
     return -EINVAL;
   if (iovcnt == 0)
     return 0;
-  if (!uaccess_valid((void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec))) {
+  
+  struct iovec kiov[128];
+  if (copy_from_user(kiov, (void *)iov_addr, (size_t)iovcnt * sizeof(struct iovec)) < 0)
     return -EFAULT;
-  }
-  struct iovec *iov = (struct iovec *)iov_addr;
+
   long total = 0;
   for (long i = 0; i < iovcnt; i++) {
-    long ret =
-        sys_write(fd, (long)iov[i].iov_base, (long)iov[i].iov_len, a3, a4, a5);
+    long ret = sys_write(fd, (long)kiov[i].iov_base, (long)kiov[i].iov_len, a3, a4, a5);
     if (ret < 0) {
       if (total > 0)
         return total;
       return ret;
     }
     total += ret;
-    if ((size_t)ret < iov[i].iov_len)
+    if ((size_t)ret < kiov[i].iov_len)
       break; /* short write */
   }
   return total;

@@ -21,6 +21,9 @@ void hpet_init(void);
  * Return: non-zero if the HPET timer is active and readable, 0 otherwise.
  */
 int hpet_is_available(void);
+
+uint64_t hpet_ktime_ns(void);
+void hpet_ksleep_ns(uint64_t ns);
 #else
 static inline void hpet_init(void) {}
 static inline int hpet_is_available(void) { return 0; }

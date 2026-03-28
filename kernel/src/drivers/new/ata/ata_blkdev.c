@@ -9,7 +9,7 @@ static int ata_blk_read(struct blkdev *dev, uint64_t block, void *buf)
 	uint32_t sectors_per_block = (uint32_t)(dev->block_size / ATA_SECTOR_SIZE);
 	uint64_t lba = block * sectors_per_block;
 
-	return ata_pio_read(drv, lba, sectors_per_block, buf);
+	return ata_read(drv, lba, sectors_per_block, buf);
 }
 
 static int ata_blk_write(struct blkdev *dev, uint64_t block, const void *buf)
@@ -18,7 +18,7 @@ static int ata_blk_write(struct blkdev *dev, uint64_t block, const void *buf)
 	uint32_t sectors_per_block = (uint32_t)(dev->block_size / ATA_SECTOR_SIZE);
 	uint64_t lba = block * sectors_per_block;
 
-	return ata_pio_write(drv, lba, sectors_per_block, buf);
+	return ata_write(drv, lba, sectors_per_block, buf);
 }
 
 struct blkdev *ata_blkdev_create(struct ata_drive *drv)

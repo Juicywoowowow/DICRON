@@ -15,26 +15,7 @@
 volatile uint8_t *hpet_base = NULL;
 static uint64_t hpet_period_fs = 0;
 
-struct acpi_hpet_table {
-	char signature[4];
-	uint32_t length;
-	uint8_t revision;
-	uint8_t checksum;
-	char oem_id[6];
-	char oem_table_id[8];
-	uint32_t oem_revision;
-	uint32_t creator_id;
-	uint32_t creator_revision;
-	uint32_t event_timer_block_id;
-	uint8_t base_address_id;
-	uint8_t register_bit_width;
-	uint8_t register_bit_offset;
-	uint8_t access_width;
-	uint64_t address;
-	uint8_t hpet_number;
-	uint16_t minimum_tick;
-	uint8_t page_protection;
-} __attribute__((packed));
+/* acpi_hpet_table moved to <dicron/acpi.h> */
 
 static volatile uint64_t ticks_1ms = 0;
 static volatile uint64_t jiffies_ms = 0;
@@ -65,6 +46,7 @@ void hpet_init(void)
 		uint64_t phys_page = addr & ~0xFFFULL;
 		uint64_t virt_page = virt & ~0xFFFULL;
 		vmm_map_page(virt_page, phys_page, VMM_PRESENT | VMM_WRITE);
+		vmm_map_page(virt_page + 4096, phys_page + 4096, VMM_PRESENT | VMM_WRITE);
 		hpet_base = (volatile uint8_t *)virt;
 	} else {
 		hpet_base = (volatile uint8_t *)addr;
@@ -108,7 +90,7 @@ int hpet_is_available(void)
 	return hpet_base != NULL;
 }
 
-uint64_t ktime_ns(void)
+uint64_t hpet_ktime_ns(void)
 {
 	if (!hpet_base)
 		return 0;
@@ -117,32 +99,14 @@ uint64_t ktime_ns(void)
 	return (ticks * hpet_period_fs) / 1000000ULL;
 }
 
-void ksleep_ns(uint64_t ns)
+void hpet_ksleep_ns(uint64_t ns)
 {
 	if (!hpet_base || ns == 0)
 		return;
 	
-	uint64_t start = ktime_ns();
-	while (ktime_ns() - start < ns)
+	uint64_t start = hpet_ktime_ns();
+	while (hpet_ktime_ns() - start < ns)
 		__asm__ volatile("pause");
 }
-
-#ifndef CONFIG_PIT
-uint64_t ktime_ms(void)
-{
-	if (hpet_base)
-		return jiffies_ms;
-	return 0;
-}
-
-void ksleep_ms(uint32_t ms)
-{
-	if (hpet_base) {
-		uint64_t target = jiffies_ms + ms;
-		while (jiffies_ms < target)
-			__asm__ volatile("hlt");
-	}
-}
-#endif
 
 #endif

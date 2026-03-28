@@ -26,7 +26,7 @@ qemu-img create -f raw "$PART_IMG" "${PART_SIZE_MB}M"
 mkfs.ext2 -q -F "$PART_IMG"
 
 # Inject the ext2 filesystem into the disk image at the partition offset
-qemu-img dd if="$PART_IMG" of="$OUT" bs=512 seek=2048
+dd if="$PART_IMG" of="$OUT" bs=512 seek=2048 conv=notrunc status=none
 rm -f "$PART_IMG"
 
 echo "  ATA-IMG ${OUT} ready (MBR + ext2)"

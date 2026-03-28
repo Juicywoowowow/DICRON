@@ -67,6 +67,11 @@ struct ata_drive {
 	int lba48;
 	uint64_t lba48_sectors;
 	char model[41];
+	
+	int dma;          /* 1 if DMA is configured */
+	uint16_t bmr_base; /* Bus Master Register base for this channel */
+	uint32_t *prd;    /* Virtual address of the PRD table */
+	uint32_t prd_phys;/* Physical address of the PRD table */
 };
 
 /* ── ata_detect.c ── */
@@ -74,11 +79,12 @@ void ata_init(void);
 struct ata_drive *ata_get_drive(int index);
 int ata_drive_count(void);
 
-/* ── ata_pio.c ── */
-int ata_pio_read(struct ata_drive *drv, uint64_t lba,
-		 uint32_t count, void *buf);
-int ata_pio_write(struct ata_drive *drv, uint64_t lba,
-		  uint32_t count, const void *buf);
+/* ── ata_io.c (formerly ata_pio.c) ── */
+int ata_read(struct ata_drive *drv, uint64_t lba, uint32_t count, void *buf);
+int ata_write(struct ata_drive *drv, uint64_t lba, uint32_t count, const void *buf);
+
+#define ata_pio_read ata_read
+#define ata_pio_write ata_write
 
 /* ── ata_blkdev.c ── */
 struct blkdev;

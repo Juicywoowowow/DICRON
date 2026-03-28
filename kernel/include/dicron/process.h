@@ -16,6 +16,7 @@ struct process {
 	uint64_t brk_base;        /* initial program break (end of loaded segments) */
 	uint64_t entry;           /* ELF entry point */
 	uint64_t stack_top;       /* top of user stack */
+	uint64_t mmap_next;       /* bump allocator for mmap */
 	struct task *main_thread;
 	int exit_code;
 };

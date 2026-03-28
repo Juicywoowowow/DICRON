@@ -3,9 +3,13 @@
 #include <dicron/log.h>
 #include "lib/string.h"
 #include <generated/autoconf.h>
+#include "drivers/pci/pci.h"
+#include "mm/vmm.h"
+#include "mm/pmm.h"
 
 static struct ata_drive drives[ATA_MAX_DRIVES];
 static int num_drives;
+static uint16_t ata_bmr_global = 0;
 
 static void ata_delay(uint16_t ctrl_port)
 {
@@ -84,8 +88,7 @@ static int ata_identify(struct ata_drive *drv)
 	for (int i = 0; i < 256; i++)
 		ident[i] = inw(io);
 
-	drv->lba28_sectors = (uint32_t)ident[60] |
-			     ((uint32_t)ident[61] << 16);
+	drv->lba28_sectors = (uint32_t)ident[60] | ((uint32_t)ident[61] << 16);
 
 	drv->lba48 = (ident[83] & (1 << 10)) ? 1 : 0;
 	if (drv->lba48) {
@@ -113,13 +116,23 @@ static void ata_probe_bus(uint16_t io_base, uint16_t ctrl_base, int bus)
 		drv->drive = d;
 		drv->io_base = io_base;
 		drv->ctrl_base = ctrl_base;
-		drv->drive_sel = (d == 0) ? ATA_DRIVE_MASTER
-					  : ATA_DRIVE_SLAVE;
+		drv->drive_sel = (d == 0) ? ATA_DRIVE_MASTER : ATA_DRIVE_SLAVE;
+					  
+		drv->bmr_base = (bus == 0) ? ata_bmr_global : (ata_bmr_global ? (uint16_t)(ata_bmr_global + 8) : 0);
+		if (drv->bmr_base) {
+			drv->dma = 1;
+			drv->prd = (uint32_t *)pmm_alloc_page(); /* 4KB page for PRD */
+			if (drv->prd) {
+				drv->prd_phys = (uint32_t)vmm_virt_to_phys((uint64_t)drv->prd);
+			} else {
+				drv->dma = 0; /* Fallback if OOM */
+			}
+		} else {
+			drv->dma = 0;
+		}
 
 		if (ata_identify(drv) == 0) {
-			klog(KLOG_INFO, "ata%d.%d: %s — %u sectors "
-			     "(LBA48=%d)\n", bus, d, drv->model,
-			     drv->lba28_sectors, drv->lba48);
+			klog(KLOG_INFO, "ata%d.%d: %s — %u sectors (LBA48=%d)\n", bus, d, drv->model, drv->lba28_sectors, drv->lba48);
 			num_drives++;
 		}
 	}
@@ -129,6 +142,16 @@ static void ata_probe_bus(uint16_t io_base, uint16_t ctrl_base, int bus)
 void ata_init(void)
 {
 	num_drives = 0;
+
+	/* Find IDE controller and configure DMA */
+	struct pci_device *ide_dev = pci_find_class(PCI_CLASS_STORAGE, PCI_SUBCLASS_IDE);
+	if (ide_dev) {
+		if (ide_dev->bar[4] & 1) {
+			ata_bmr_global = (uint16_t)(ide_dev->bar[4] & ~3U);
+			uint16_t cmd = pci_config_read16(ide_dev->bus, ide_dev->dev, ide_dev->func, PCI_COMMAND);
+			pci_config_write16(ide_dev->bus, ide_dev->dev, ide_dev->func, PCI_COMMAND, cmd | 4); /* Enable Bus Master */
+		}
+	}
 
 #ifdef CONFIG_ATA_PRIMARY
 	ata_probe_bus(ATA_PRI_DATA, ATA_PRI_ALT_STATUS, 0);

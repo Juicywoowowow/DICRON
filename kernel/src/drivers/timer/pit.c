@@ -35,24 +35,13 @@ void pit_init(void)
 	idt_set_handler(0x20, pit_irq);
 }
 
-uint64_t ktime_ms(void)
+uint64_t pit_jiffies(void)
 {
-#ifdef CONFIG_HPET
-	if (hpet_is_available())
-		return ktime_ns() / 1000000ULL;
-#endif
 	return jiffies;
 }
 
-void ksleep_ms(uint32_t ms)
+void pit_sleep_ms(uint32_t ms)
 {
-#ifdef CONFIG_HPET
-	if (hpet_is_available()) {
-		ksleep_ns((uint64_t)ms * 1000000ULL);
-		return;
-	}
-#endif
-
 	uint64_t target = jiffies + ms;
 
 	/*
