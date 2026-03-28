@@ -14,6 +14,12 @@
 #ifdef CONFIG_PCI
 #include "drivers/pci/pci.h"
 #endif
+#ifdef CONFIG_VIRTIO_BLK
+#include "drivers/new/virtio/virtio_blk.h"
+#endif
+#ifdef CONFIG_PCSPEAKER
+#include "drivers/timer/pcspeaker.h"
+#endif
 #ifdef CONFIG_ATA
 #include "drivers/new/ata/ata.h"
 #include <dicron/blkdev.h>
@@ -130,9 +136,15 @@ void kmain(void)
 		  hhdm_request.response->offset);
 	hpet_init();
 	pit_init();
+#ifdef CONFIG_PCSPEAKER
+	pcspeaker_init();
+#endif
 	rtc_init();
 #ifdef CONFIG_PCI
 	pci_init();
+#endif
+#ifdef CONFIG_VIRTIO_BLK
+	virtio_blk_init();
 #endif
 #ifdef CONFIG_ATA
 	ata_init();

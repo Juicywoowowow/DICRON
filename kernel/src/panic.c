@@ -1,11 +1,17 @@
 #include <dicron/panic.h>
 #include <dicron/io.h>
 #include "lib/printf.h"
+#include "drivers/timer/pcspeaker.h"
+#include <generated/autoconf.h>
 #include <stdarg.h>
 
 void kpanic(const char *fmt, ...)
 {
 	__asm__ volatile("cli");
+
+#ifdef CONFIG_PCSPEAKER
+	pcspeaker_panic_beep();
+#endif
 
 	char buf[512];
 	va_list ap;
