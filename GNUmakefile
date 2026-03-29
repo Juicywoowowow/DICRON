@@ -360,6 +360,7 @@ run: iso test-ata-img test-virtio-img test-sata-img
 		$(QEMU_SATA_FLAGS) \
 		$(QEMU_AUDIO_FLAGS) \
 		-serial stdio \
+    -display none \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
 ifdef CONFIG_TEST_ATA_DRIVE
@@ -386,6 +387,7 @@ setram: iso test-ata-img test-virtio-img test-sata-img
 		$(QEMU_VIRTIO_FLAGS) \
 		$(QEMU_SATA_FLAGS) \
 		-serial stdio \
+        -display none \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
 ifdef CONFIG_TEST_ATA_DRIVE
@@ -413,6 +415,7 @@ ranmem: iso test-ata-img test-virtio-img test-sata-img
 		$(QEMU_VIRTIO_FLAGS) \
 		$(QEMU_SATA_FLAGS) \
 		-serial stdio \
+        -display none \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
 ifdef CONFIG_TEST_ATA_DRIVE
