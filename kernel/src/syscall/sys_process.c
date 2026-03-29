@@ -190,3 +190,78 @@ long sys_prlimit64(long pid, long resource, long new_limit, long old_limit, long
 	}
 	return 0;
 }
+
+/* ------------------------------------------------------------------ */
+/*  sys_times                                                          */
+/* ------------------------------------------------------------------ */
+
+/* Linux tms struct — all fields in clock ticks (HZ=100) */
+struct tms {
+	long tms_utime;  /* user time */
+	long tms_stime;  /* system time */
+	long tms_cutime; /* children user time */
+	long tms_cstime; /* children system time */
+};
+
+#define HZ 100  /* kernel clock ticks per second */
+
+long sys_times(long buf_addr, long a1, long a2, long a3, long a4, long a5)
+{
+	(void)a1; (void)a2; (void)a3; (void)a4; (void)a5;
+
+	/* ticks = ms / (1000 / HZ) = ms * HZ / 1000 */
+	long ticks = (long)((ktime_ms() * HZ) / 1000);
+
+	if (buf_addr) {
+		if (!uaccess_valid((void *)buf_addr, sizeof(struct tms)))
+			return -EFAULT;
+		struct tms *t = (struct tms *)buf_addr;
+		t->tms_utime  = ticks;
+		t->tms_stime  = 0;
+		t->tms_cutime = 0;
+		t->tms_cstime = 0;
+	}
+	return ticks; /* return value is elapsed real time in ticks */
+}
+
+/* ------------------------------------------------------------------ */
+/*  sys_clock_gettime                                                  */
+/* ------------------------------------------------------------------ */
+
+/* POSIX clockid values */
+#define CLOCK_REALTIME   0
+#define CLOCK_MONOTONIC  1
+#define CLOCK_PROCESS_CPUTIME_ID 2
+
+struct timespec {
+	long tv_sec;
+	long tv_nsec;
+};
+
+long sys_clock_gettime(long clkid, long ts_addr, long a2,
+		       long a3, long a4, long a5)
+{
+	(void)a2; (void)a3; (void)a4; (void)a5;
+
+	if (!uaccess_valid((void *)ts_addr, sizeof(struct timespec)))
+		return -EFAULT;
+
+	struct timespec *ts = (struct timespec *)ts_addr;
+	uint64_t ms;
+
+	switch (clkid) {
+	case CLOCK_REALTIME:
+		ts->tv_sec  = (long)rtc_unix_time();
+		ts->tv_nsec = (long)((ktime_ms() % 1000) * 1000000);
+		break;
+	case CLOCK_MONOTONIC:
+	case CLOCK_PROCESS_CPUTIME_ID:
+		ms = ktime_ms();
+		ts->tv_sec  = (long)(ms / 1000);
+		ts->tv_nsec = (long)((ms % 1000) * 1000000);
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}

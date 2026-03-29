@@ -29,6 +29,8 @@ extern long sys_ioctl(long, long, long, long, long, long);
 extern long sys_openat(long, long, long, long, long, long);
 extern long sys_gettimeofday(long, long, long, long, long, long);
 extern long sys_prlimit64(long, long, long, long, long, long);
+extern long sys_times(long, long, long, long, long, long);
+extern long sys_clock_gettime(long, long, long, long, long, long);
 
 /* --- sys_exit --- */
 static long sys_exit(long code, long a1, long a2,
@@ -99,6 +101,8 @@ void syscall_table_init(void)
 	register_syscall(__NR_set_tid_address, sys_set_tid_address);
 	register_syscall(__NR_gettimeofday,    sys_gettimeofday);
 	register_syscall(__NR_prlimit64,       sys_prlimit64);
+	register_syscall(100 /* times */,      sys_times);
+	register_syscall(228 /* clock_gettime */, sys_clock_gettime);
 }
 
 /* --- Dispatch --- */

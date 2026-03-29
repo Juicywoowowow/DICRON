@@ -86,6 +86,11 @@ ifndef CONFIG_ZRAM
 endif
 endif
 
+# ── Demand paging (conditionally exclude dpage.c) ──
+ifndef CONFIG_DEMAND_PAGING
+  CORE_SRCS := $(filter-out kernel/src/mm/dpage.c,$(CORE_SRCS))
+endif
+
 # ── Tests (conditional) ──
 TEST_SRCS :=
 

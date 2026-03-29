@@ -9,6 +9,10 @@
 #include <generated/autoconf.h>
 #include <stddef.h>
 
+#ifdef CONFIG_DEMAND_PAGING
+#include "mm/dpage.h"
+#endif
+
 #define IDT_ENTRIES 256
 
 /* PIC ports */
@@ -105,6 +109,24 @@ static void page_fault_handler(struct idt_frame *frame)
 	__asm__ volatile("mov %%cr2, %0" : "=r"(cr2));
 
 	int from_user = (frame->cs & 3) == 3;
+
+#ifdef CONFIG_DEMAND_PAGING
+	/*
+	 * Demand paging: check if the faulting address holds a demand PTE.
+	 * vmflags are packed in bits 16-63 of the PTE by the ELF loader /
+	 * mmap path.  Extract them and forward to the fault handler.
+	 */
+	{
+		uint64_t pte = vmm_read_pte_in(vmm_get_cr3(), cr2 & ~(uint64_t)0xFFF);
+		if (dpage_pte_is_demand(pte)) {
+			uint64_t vmflags = pte >> 16;
+			/* Strip the demand-marker bits from vmflags */
+			vmflags &= 0x8000000000000EFBULL; /* keep NX + standard PTE flags */
+			if (dpage_pf_handle(cr2, vmm_get_cr3(), vmflags))
+				return;
+		}
+	}
+#endif
 
 #ifdef CONFIG_SWAP
 	/*

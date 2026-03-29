@@ -15,6 +15,10 @@
 #endif
 #endif
 
+#ifdef CONFIG_DEMAND_PAGING
+#include "mm/dpage.h"
+#endif
+
 /*
  * sys_memory.c — Memory management syscalls: brk, mmap, munmap.
  *
@@ -70,6 +74,17 @@ long sys_brk(long addr, long a1, long a2, long a3, long a4, long a5) {
   if (new_page_end > old_page_end) {
     /* Expanding: map new zeroed pages */
     for (uint64_t va = old_page_end; va < new_page_end; va += PAGE_SIZE) {
+#ifdef CONFIG_DEMAND_PAGING
+      /*
+       * Zero-on-demand: install a demand PTE.  The page is only backed
+       * when first written/read, saving PMM frames for heap pages that
+       * musl allocates but never touches.
+       */
+      uint64_t dpte = dpage_pte_encode_zero()
+                    | ((VMM_PRESENT | VMM_WRITE | VMM_USER | VMM_NX) << 16);
+      vmm_write_pte_in(proc->cr3, va, dpte);
+      (void)hhdm;
+#else
       void *page = pmm_alloc_page();
       if (!page)
         return (long)proc->brk; /* OOM: keep old brk */
@@ -80,6 +95,7 @@ long sys_brk(long addr, long a1, long a2, long a3, long a4, long a5) {
 #ifdef CONFIG_SWAP
       swap_register_mapped(page, va, proc->cr3);
 #endif
+#endif /* CONFIG_DEMAND_PAGING */
     }
   } else if (new_page_end < old_page_end) {
     /* Shrinking: free physical pages and unmap PTEs */
@@ -157,16 +173,25 @@ long sys_mmap(long addr, long length, long prot, long flags, long fd,
     vmflags |= VMM_NX;
 
   for (size_t i = 0; i < num_pages; i++) {
+    uint64_t va = va_start + i * PAGE_SIZE;
+#ifdef CONFIG_DEMAND_PAGING
+    /*
+     * Zero-on-demand: no physical frame until first access.
+     */
+    uint64_t dpte = dpage_pte_encode_zero() | (vmflags << 16);
+    vmm_write_pte_in(proc->cr3, va, dpte);
+    (void)hhdm;
+#else
     void *page = pmm_alloc_page();
     if (!page)
       return -ENOMEM;
     memset(page, 0, PAGE_SIZE);
     uint64_t phys = (uint64_t)page - hhdm;
-    uint64_t va = va_start + i * PAGE_SIZE;
     vmm_map_page_in(proc->cr3, va, phys, vmflags);
 #ifdef CONFIG_SWAP
     swap_register_mapped(page, va, proc->cr3);
 #endif
+#endif /* CONFIG_DEMAND_PAGING */
   }
 
   return (long)va_start;

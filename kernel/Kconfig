@@ -29,6 +29,18 @@ config ZRAM
 	  Compress reclaimable pages into kernel heap using LZO.
 	  Works even without a disk.  Effective for mostly-zero pages.
 
+config DEMAND_PAGING
+	bool "Enable demand paging"
+	default y
+	depends on SWAP
+	help
+	  Defer physical frame allocation until a page is first accessed.
+	  ELF segments, anonymous mmap, and brk pages are all mapped as
+	  not-present demand PTEs.  A page fault allocates and populates
+	  the frame on first touch.  Significantly reduces startup memory
+	  usage and makes large-binary loading nearly instantaneous.
+	  Requires CONFIG_SWAP for the unified fault handler path.
+
 config INITRD
 	bool "Load initrd from Limine module"
 	default y

@@ -8,6 +8,10 @@
 #include "mm/swap.h"
 #endif
 
+#ifdef CONFIG_DEMAND_PAGING
+#include "mm/dpage.h"
+#endif
+
 /*
  * elf.c — ELF64 validation and loading.
  */
@@ -112,6 +116,59 @@ uint64_t elf64_load_into(const void *data, size_t size,
 
 		for (size_t p = 0; p < num_pages; p++) {
 			uint64_t va = vaddr_start + p * 4096;
+
+			/* Determine file-data range for this page */
+			uint64_t seg_file_start = phdr->p_vaddr;
+			uint64_t seg_file_end   = phdr->p_vaddr + phdr->p_filesz;
+			size_t   copy_off = 0;
+			size_t   copy_len = 0;
+			const uint8_t *src = NULL;
+
+			if (va + 4096 > seg_file_start && va < seg_file_end) {
+				uint64_t cs = va > seg_file_start ? va : seg_file_start;
+				uint64_t ce = (va + 4096) < seg_file_end ? (va + 4096) : seg_file_end;
+				copy_len = (size_t)(ce - cs);
+				size_t file_off = (size_t)(phdr->p_offset + (cs - phdr->p_vaddr));
+				copy_off = (size_t)(cs - va);
+				src = raw + file_off;
+			}
+
+#ifdef CONFIG_DEMAND_PAGING
+			/*
+			 * Demand paging: install a not-present PTE with a
+			 * descriptor slot.  The frame is allocated on first touch.
+			 */
+			int demand_ok = 0;
+			/* Flags stored alongside the demand marker for fault-time use */
+			if (copy_len == 0) {
+				/* BSS / zero page — no descriptor needed */
+				vmm_write_pte_in(pml4_phys, va,
+					dpage_pte_encode_zero() | (vmflags << 16));
+				demand_ok = 1;
+			} else {
+				struct dpage_desc dd;
+				dd.src      = src;
+				dd.copy_off = (uint16_t)copy_off;
+				dd.copy_len = (uint16_t)copy_len;
+				int slot = dpage_alloc(&dd);
+				if (slot >= 0) {
+					/*
+					 * Pack vmflags into bits 48-63 of the PTE.
+					 * The fault handler reads them back when
+					 * installing the real PTE.
+					 */
+					vmm_write_pte_in(pml4_phys, va,
+						dpage_pte_encode_slot((uint64_t)slot)
+						| (vmflags << 16));
+					demand_ok = 1;
+				}
+			}
+			if (demand_ok)
+				continue; /* no physical frame yet */
+			/* Fall through to eager allocation below */
+#endif /* CONFIG_DEMAND_PAGING */
+
+			/* Eager allocation (or demand fallback) */
 			void *page = pmm_alloc_page();
 			if (!page) {
 				klog(KLOG_ERR, "elf64_load: OOM mapping segment\n");
@@ -125,18 +182,8 @@ uint64_t elf64_load_into(const void *data, size_t size,
 				return 0;
 			}
 
-			/* Copy file data */
-			uint64_t seg_file_start = phdr->p_vaddr;
-			uint64_t seg_file_end = phdr->p_vaddr + phdr->p_filesz;
-
-			if (va + 4096 > seg_file_start && va < seg_file_end) {
-				uint64_t cs = va > seg_file_start ? va : seg_file_start;
-				uint64_t ce = (va + 4096) < seg_file_end ? (va + 4096) : seg_file_end;
-				size_t copy_len = (size_t)(ce - cs);
-				size_t file_off = (size_t)(phdr->p_offset + (cs - phdr->p_vaddr));
-				size_t page_off = (size_t)(cs - va);
-				memcpy((uint8_t *)page + page_off, raw + file_off, copy_len);
-			}
+			if (src && copy_len > 0)
+				memcpy((uint8_t *)page + copy_off, src, copy_len);
 
 #ifdef CONFIG_SWAP
 			swap_register_mapped(page, va, pml4_phys);
