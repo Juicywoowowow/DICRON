@@ -1,0 +1,33 @@
+name: Boot Test
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y gcc nasm make xorriso mtools qemu-system-x86 python3 git
+
+      - name: Clone Limine
+        run: |
+          git clone https://github.com/limine-bootloader/limine.git Limine \
+            --branch v6.x-branch-binary --depth=1
+          make -C Limine
+
+      - name: Make default config
+        run: make defconfig
+
+      - name: Compile the kernel
+        run: make -j$(nproc)
+
+      - name: Run the kernel
+        timeout-minutes: 1
+        run: make run
