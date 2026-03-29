@@ -350,6 +350,11 @@ ifdef CONFIG_TEST_SATA_DRIVE
 endif
 
 QEMU_AUDIO_FLAGS := -audiodev wav,id=snd0,path=/dev/null -machine pcspk-audiodev=snd0
+ifdef CI
+  QEMU_DISPLAY_FLAGS := -display none
+else
+  QEMU_DISPLAY_FLAGS :=
+endif
 
 run: iso test-ata-img test-virtio-img test-sata-img
 	qemu-system-x86_64 \
@@ -360,7 +365,7 @@ run: iso test-ata-img test-virtio-img test-sata-img
 		$(QEMU_SATA_FLAGS) \
 		$(QEMU_AUDIO_FLAGS) \
 		-serial stdio \
-    -display none \
+    $(QEMU_DISPLAY_FLAGS) \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
 ifdef CONFIG_TEST_ATA_DRIVE
@@ -387,7 +392,7 @@ setram: iso test-ata-img test-virtio-img test-sata-img
 		$(QEMU_VIRTIO_FLAGS) \
 		$(QEMU_SATA_FLAGS) \
 		-serial stdio \
-        -display none \
+    $(QEMU_DISPLAY_FLAGS) \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
 ifdef CONFIG_TEST_ATA_DRIVE
@@ -415,7 +420,7 @@ ranmem: iso test-ata-img test-virtio-img test-sata-img
 		$(QEMU_VIRTIO_FLAGS) \
 		$(QEMU_SATA_FLAGS) \
 		-serial stdio \
-        -display none \
+    $(QEMU_DISPLAY_FLAGS) \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
 ifdef CONFIG_TEST_ATA_DRIVE
