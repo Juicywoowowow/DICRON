@@ -54,6 +54,19 @@ config VERBOSE_SYSCALL
 	  Log warnings for unimplemented and out-of-bounds syscalls.
 	  Useful for debugging, noisy in production.
 
+config QEMU_CI_EXIT
+	bool "QEMU CI exit device (isa-debug-exit)"
+	default y
+	help
+	  After all boot and post-boot tests complete, write to the QEMU
+	  isa-debug-exit port (0xf4) so QEMU terminates with a predictable
+	  exit code instead of spinning in the idle loop.
+	  Writing 0x10 → host exit code 33 (success).
+	  Writing 0x00 → host exit code  1 (failure).
+	  Enable this only when running under QEMU with:
+	    -device isa-debug-exit,iobase=0xf4,iosize=0x04
+	  The 'make ci-run' target sets this automatically.
+
 menu "Kernel log levels"
 
 config KLOG_SHOW_EMERG

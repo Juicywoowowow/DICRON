@@ -264,7 +264,7 @@ else
   QEMU_SATA_FLAGS :=
 endif
 
-.PHONY: all iso run ranmem setram clean defconfig menuconfig oldconfig test-ata-img test-virtio-img test-sata-img
+.PHONY: all iso run ci-run ranmem setram clean defconfig menuconfig oldconfig test-ata-img test-virtio-img test-sata-img
 
 all: $(KERNEL)
 
@@ -356,6 +356,10 @@ else
   QEMU_DISPLAY_FLAGS :=
 endif
 
+# ── CI exit device ──
+# Attached only by the ci-run target; invisible to normal 'make run'.
+QEMU_CI_FLAGS := -device isa-debug-exit,iobase=0xf4,iosize=0x04
+
 run: iso test-ata-img test-virtio-img test-sata-img
 	qemu-system-x86_64 \
 		-M q35 \
@@ -379,6 +383,39 @@ endif
 ifdef CONFIG_TEST_SATA_DRIVE
 	@rm -f $(TEST_SATA_IMG)
 	@echo "  SATA-IMG $(TEST_SATA_IMG) cleaned up"
+endif
+
+# ── CI run: inject isa-debug-exit + -DCONFIG_QEMU_CI_EXIT, then check exit 33 ──
+# QEMU writes (value<<1)|1 on port 0xf4.  We write 0x10 → exit 33 = success.
+ci-run: CFLAGS += -DCONFIG_QEMU_CI_EXIT
+ci-run: iso test-ata-img test-virtio-img test-sata-img
+	qemu-system-x86_64 \
+		-M q35 \
+		-cdrom $(ISO) \
+		$(QEMU_ATA_FLAGS) \
+		$(QEMU_VIRTIO_FLAGS) \
+		$(QEMU_SATA_FLAGS) \
+		$(QEMU_AUDIO_FLAGS) \
+		$(QEMU_CI_FLAGS) \
+		-serial stdio \
+		-display none \
+		-no-reboot \
+		-d int,cpu_reset -D qemu.log; \
+		exit_code=$$?; \
+		if [ $$exit_code -eq 33 ]; then \
+			echo "  CI      PASS (QEMU exit $$exit_code)"; \
+		else \
+			echo "  CI      FAIL (QEMU exit $$exit_code, expected 33)"; \
+			exit 1; \
+		fi
+ifdef CONFIG_TEST_ATA_DRIVE
+	@rm -f $(TEST_ATA_IMG)
+endif
+ifdef CONFIG_TEST_VIRTIO_DRIVE
+	@rm -f $(TEST_VIRTIO_IMG)
+endif
+ifdef CONFIG_TEST_SATA_DRIVE
+	@rm -f $(TEST_SATA_IMG)
 endif
 
 # Run with a specific amount of RAM (in MB): make setram RAM=64

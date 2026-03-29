@@ -31,4 +31,4 @@ jobs:
 
       - name: Run the kernel
         timeout-minutes: 1
-        run: make run
+        run: make ci-run

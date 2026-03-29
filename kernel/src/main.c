@@ -57,6 +57,9 @@
 #ifdef CONFIG_TESTS
 #include "tests/ktest.h"
 #endif
+#ifdef CONFIG_QEMU_CI_EXIT
+#include <dicron/qemu_exit.h>
+#endif
 
 /* Limine base revision */
 __attribute__((used, section(".limine_requests")))
@@ -231,8 +234,13 @@ void kmain(void)
 #ifdef CONFIG_TESTS
 	/* boot test harness — run all tests before continuing */
 	int failures = ktest_run_all();
-	if (failures > 0)
+	if (failures > 0) {
+#ifdef CONFIG_QEMU_CI_EXIT
+		klog(KLOG_ERR, "boot tests failed (%d failures) — signalling QEMU exit\n", failures);
+		qemu_exit(QEMU_EXIT_FAILURE_VAL);
+#endif
 		kpanic("boot tests failed (%d failures) — halting\n", failures);
+	}
 #endif
 
 	/* all tests passed — now start the scheduler */
@@ -241,8 +249,16 @@ void kmain(void)
 #ifdef CONFIG_TESTS
 	/* post-boot tests — require live scheduler */
 	int post_failures = ktest_run_post();
-	if (post_failures > 0)
+	if (post_failures > 0) {
+#ifdef CONFIG_QEMU_CI_EXIT
+		klog(KLOG_ERR, "post-boot tests failed (%d failures) — signalling QEMU exit\n", post_failures);
+		qemu_exit(QEMU_EXIT_FAILURE_VAL);
+#endif
 		kpanic("post-boot tests failed (%d failures) — halting\n", post_failures);
+	}
+#ifdef CONFIG_QEMU_CI_EXIT
+	qemu_exit(QEMU_EXIT_SUCCESS_VAL);
+#endif
 #endif
 
 	/* Extract initrd (cpio archive) from Limine module */
