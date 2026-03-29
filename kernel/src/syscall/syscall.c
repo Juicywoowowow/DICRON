@@ -112,14 +112,14 @@ long syscall_dispatch(long nr, long a0, long a1, long a2,
 {
 	/* Bounds check */
 	if (nr < 0 || nr >= SYSCALL_MAX) {
-		klog(KLOG_WARN, "syscall: out-of-bounds nr=%ld\n", nr);
+		klog(KLOG_DEBUG, "syscall: out-of-bounds nr=%ld\n", nr);
 		return -ENOSYS;
 	}
 
 	/* Lookup handler */
 	syscall_fn_t fn = syscall_table[nr];
 	if (!fn) {
-		klog(KLOG_WARN, "syscall: unimplemented nr=%ld\n", nr);
+		klog(KLOG_DEBUG, "syscall: unimplemented nr=%ld\n", nr);
 		return -ENOSYS;
 	}
 

@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "../drivers/new/hpet/hpet.h"
+#include "../drivers/hpet/hpet.h"
 
 #ifdef CONFIG_HPET
 KTEST_REGISTER(ktest_hpet_base, "hpet base pointer", KTEST_CAT_BOOT)

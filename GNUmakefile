@@ -64,13 +64,19 @@ ifdef CONFIG_VIRTIO_BLK
   CORE_SRCS += $(wildcard kernel/src/drivers/new/virtio/*.c)
 endif
 ifdef CONFIG_HPET
-  CORE_SRCS += $(wildcard kernel/src/drivers/new/hpet/*.c)
+  CORE_SRCS += $(wildcard kernel/src/drivers/hpet/*.c)
 endif
 ifdef CONFIG_ATA
   CORE_SRCS += $(wildcard kernel/src/drivers/new/ata/*.c)
 endif
 ifdef CONFIG_PCI
   CORE_SRCS += $(wildcard kernel/src/drivers/pci/*.c)
+endif
+ifdef CONFIG_AHCI
+  CORE_SRCS += $(wildcard kernel/src/drivers/pci/ahci/*.c)
+endif
+ifdef CONFIG_SATA
+  CORE_SRCS += $(wildcard kernel/src/drivers/new/sata/*.c)
 endif
 
 # ── Swap subsystem (conditionally exclude from wildcard mm/ pick-up) ──
@@ -188,6 +194,12 @@ ifdef CONFIG_TESTS_BOOT
   ifdef CONFIG_TESTS_VIRTIO_BLK
     TEST_SRCS += $(wildcard kernel/src/tests/test_virtio_blk*.c)
   endif
+  ifdef CONFIG_TESTS_AHCI
+    TEST_SRCS += $(wildcard kernel/src/tests/test_ahci_*.c)
+  endif
+  ifdef CONFIG_TESTS_SATA
+    TEST_SRCS += $(wildcard kernel/src/tests/test_sata_*.c)
+  endif
 endif # CONFIG_TESTS_BOOT
 
 ifdef CONFIG_TESTS_POST
@@ -222,6 +234,7 @@ ISO     := $(BIN_DIR)/dicron.iso
 RAM ?= 128
 TEST_ATA_IMG    := $(BUILD_DIR)/test-ata.img
 TEST_VIRTIO_IMG := $(BUILD_DIR)/test-virtio.img
+TEST_SATA_IMG   := $(BUILD_DIR)/test-sata.img
 
 # If CONFIG_TEST_ATA_DRIVE is enabled, create a temp ATA drive and attach it
 ifdef CONFIG_TEST_ATA_DRIVE
@@ -242,7 +255,16 @@ else
   QEMU_VIRTIO_FLAGS :=
 endif
 
-.PHONY: all iso run ranmem setram clean defconfig menuconfig oldconfig test-ata-img test-virtio-img
+# If CONFIG_TEST_SATA_DRIVE is enabled, attach an 8 MB SATA disk on ICH9-AHCI
+ifdef CONFIG_TEST_SATA_DRIVE
+  QEMU_SATA_FLAGS := \
+    -drive if=none,id=testsata,file=$(TEST_SATA_IMG),format=raw \
+    -device ide-hd,drive=testsata,bus=ide.4,unit=0
+else
+  QEMU_SATA_FLAGS :=
+endif
+
+.PHONY: all iso run ranmem setram clean defconfig menuconfig oldconfig test-ata-img test-virtio-img test-sata-img
 
 all: $(KERNEL)
 
@@ -320,14 +342,22 @@ ifdef CONFIG_TEST_VIRTIO_DRIVE
 	@bash tools/mk-test-virtio.sh $(TEST_VIRTIO_IMG) 8
 endif
 
-QEMU_AUDIO_FLAGS := -audiodev dsound,id=snd0 -machine pcspk-audiodev=snd0
+# ── Test SATA drive image ──
+test-sata-img:
+ifdef CONFIG_TEST_SATA_DRIVE
+	@mkdir -p $(BUILD_DIR)
+	@bash tools/mk-test-sata.sh $(TEST_SATA_IMG) 8
+endif
 
-run: iso test-ata-img test-virtio-img
+QEMU_AUDIO_FLAGS := -audiodev wav,id=snd0,path=/dev/null -machine pcspk-audiodev=snd0
+
+run: iso test-ata-img test-virtio-img test-sata-img
 	qemu-system-x86_64 \
 		-M q35 \
 		-cdrom $(ISO) \
 		$(QEMU_ATA_FLAGS) \
 		$(QEMU_VIRTIO_FLAGS) \
+		$(QEMU_SATA_FLAGS) \
 		$(QEMU_AUDIO_FLAGS) \
 		-serial stdio \
 		-no-reboot \
@@ -340,9 +370,13 @@ ifdef CONFIG_TEST_VIRTIO_DRIVE
 	@rm -f $(TEST_VIRTIO_IMG)
 	@echo "  VIO-IMG $(TEST_VIRTIO_IMG) cleaned up"
 endif
+ifdef CONFIG_TEST_SATA_DRIVE
+	@rm -f $(TEST_SATA_IMG)
+	@echo "  SATA-IMG $(TEST_SATA_IMG) cleaned up"
+endif
 
 # Run with a specific amount of RAM (in MB): make setram RAM=64
-setram: iso test-ata-img test-virtio-img
+setram: iso test-ata-img test-virtio-img test-sata-img
 	@echo "=== Running with $(RAM) MB RAM ==="
 	qemu-system-x86_64 \
 		-M q35 \
@@ -350,6 +384,7 @@ setram: iso test-ata-img test-virtio-img
 		-cdrom $(ISO) \
 		$(QEMU_ATA_FLAGS) \
 		$(QEMU_VIRTIO_FLAGS) \
+		$(QEMU_SATA_FLAGS) \
 		-serial stdio \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
@@ -361,9 +396,13 @@ ifdef CONFIG_TEST_VIRTIO_DRIVE
 	@rm -f $(TEST_VIRTIO_IMG)
 	@echo "  VIO-IMG $(TEST_VIRTIO_IMG) cleaned up"
 endif
+ifdef CONFIG_TEST_SATA_DRIVE
+	@rm -f $(TEST_SATA_IMG)
+	@echo "  SATA-IMG $(TEST_SATA_IMG) cleaned up"
+endif
 
 # Run with random RAM between 1 MB and 5120 MB
-ranmem: iso test-ata-img test-virtio-img
+ranmem: iso test-ata-img test-virtio-img test-sata-img
 	$(eval RAND_RAM := $(shell shuf -i 1-5120 -n 1))
 	@echo "=== Running with $(RAND_RAM) MB RAM (random) ==="
 	qemu-system-x86_64 \
@@ -372,6 +411,7 @@ ranmem: iso test-ata-img test-virtio-img
 		-cdrom $(ISO) \
 		$(QEMU_ATA_FLAGS) \
 		$(QEMU_VIRTIO_FLAGS) \
+		$(QEMU_SATA_FLAGS) \
 		-serial stdio \
 		-no-reboot \
 		-d int,cpu_reset -D qemu.log
@@ -383,8 +423,12 @@ ifdef CONFIG_TEST_VIRTIO_DRIVE
 	@rm -f $(TEST_VIRTIO_IMG)
 	@echo "  VIO-IMG $(TEST_VIRTIO_IMG) cleaned up"
 endif
+ifdef CONFIG_TEST_SATA_DRIVE
+	@rm -f $(TEST_SATA_IMG)
+	@echo "  SATA-IMG $(TEST_SATA_IMG) cleaned up"
+endif
 
 clean:
-	rm -rf $(BUILD_DIR) $(BIN_DIR) iso_root qemu.log $(TEST_ATA_IMG) $(TEST_VIRTIO_IMG)
+	rm -rf $(BUILD_DIR) $(BIN_DIR) iso_root qemu.log $(TEST_ATA_IMG) $(TEST_VIRTIO_IMG) $(TEST_SATA_IMG)
 
 -include $(DEPS)

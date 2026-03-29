@@ -1,4 +1,4 @@
-#include "../drivers/new/hpet/hpet.h"
+#include "../drivers/hpet/hpet.h"
 #include "ktest.h"
 #include <dicron/time.h>
 

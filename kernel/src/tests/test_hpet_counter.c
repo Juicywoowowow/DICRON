@@ -1,5 +1,5 @@
 #include "ktest.h"
-#include "../drivers/new/hpet/hpet_util.h"
+#include "../drivers/hpet/hpet_util.h"
 
 #ifdef CONFIG_HPET
 KTEST_REGISTER(ktest_hpet_counter, "hpet counter", KTEST_CAT_BOOT)

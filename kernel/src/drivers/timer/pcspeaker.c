@@ -18,7 +18,7 @@
 #ifdef CONFIG_PCSPEAKER
 
 #ifdef CONFIG_HPET
-#include "drivers/new/hpet/hpet.h"
+#include "drivers/hpet/hpet.h"
 #endif
 
 /* PIT oscillator base frequency (Hz) */
@@ -110,7 +110,7 @@ void pcspeaker_panic_beep(void) {
 void pcspeaker_init(void) {
   pcspeaker_stop();
   pcspeaker_beep(1000, 60);
-  klog(KLOG_INFO, "pcspeaker: initialized\n");
+  klog(KLOG_DEBUG, "pcspeaker: initialized\n");
 }
 
 #endif /* CONFIG_PCSPEAKER */

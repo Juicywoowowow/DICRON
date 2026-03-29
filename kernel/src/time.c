@@ -2,7 +2,7 @@
 #include <generated/autoconf.h>
 
 #ifdef CONFIG_HPET
-#include "drivers/new/hpet/hpet.h"
+#include "drivers/hpet/hpet.h"
 #endif
 
 #ifdef CONFIG_PIT

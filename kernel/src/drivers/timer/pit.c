@@ -3,7 +3,7 @@
 #include <dicron/sched.h>
 #include "arch/x86_64/idt.h"
 #include "arch/x86_64/io.h"
-#include "drivers/new/hpet/hpet.h"
+#include "drivers/hpet/hpet.h"
 
 static volatile uint64_t jiffies = 0;
 

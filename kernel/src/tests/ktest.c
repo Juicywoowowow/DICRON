@@ -22,8 +22,6 @@ void ktest_summary(void) {
   if (ktest_stats.failed > 0)
     kio_printf("  *** %d/%d TESTS FAILED — FIX FAILURES ***\n",
                ktest_stats.failed, ktest_stats.total);
-  else
-    kio_printf("  All %d tests passed. Booting kernel.\n", ktest_stats.total);
 }
 
 static int ktest_run_category(int category, const char *label) {
@@ -57,6 +55,5 @@ static int ktest_run_category(int category, const char *label) {
 int ktest_run_all(void) { return ktest_run_category(KTEST_CAT_BOOT, "Boot"); }
 
 int ktest_run_post(void) {
-  kio_printf("\n--- post-boot tests (live scheduler) ---\n");
   return ktest_run_category(KTEST_CAT_POST, "Post-Boot");
 }

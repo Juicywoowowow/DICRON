@@ -52,18 +52,18 @@ long sys_write(long fd, long buf_addr, long count, long a3, long a4, long a5) {
     count = WRITE_MAX;
 
   if (!uaccess_valid((const void *)buf_addr, (size_t)count)) {
-    klog(KLOG_INFO, "sys_write: !uaccess_valid\n");
+    klog(KLOG_DEBUG, "sys_write: !uaccess_valid\n");
     return -EFAULT;
   }
 
   struct file *f = fd_get((int)fd);
   if (!f) {
-    klog(KLOG_INFO, "sys_write: fd_get failed for %d\n", (int)fd);
+    klog(KLOG_DEBUG, "sys_write: fd_get failed for %d\n", (int)fd);
     return -EBADF;
   }
   uint32_t waccmode = f->f_mode & (O_RDONLY | O_WRONLY | O_RDWR);
   if (waccmode != O_WRONLY && waccmode != O_RDWR) {
-    klog(KLOG_INFO, "sys_write: mode bad\n");
+    klog(KLOG_DEBUG, "sys_write: mode bad\n");
     return -EBADF;
   }
 

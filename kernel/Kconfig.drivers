@@ -59,6 +59,13 @@ config PCSPEAKER
 	  Uses HPET for timing when CONFIG_HPET is enabled; falls back to
 	  a calibrated busy-loop otherwise.
 
+config HPET
+	bool "HPET timer"
+	default y
+	help
+	  High Precision Event Timer (HPET) support. Includes nanosecond
+	  timing API. Replaces the PIT timer.
+
 endmenu
 
 menu "New Drivers"
@@ -85,13 +92,6 @@ config TEST_VIRTIO_DRIVE
 	  as a virtio-blk device, and delete the image when QEMU exits.
 	  Useful for exercising the virtio-blk driver against a real
 	  (emulated) disk without keeping a permanent image around.
-
-config HPET
-	bool "HPET timer"
-	default n
-	help
-	  High Precision Event Timer (HPET) support. Includes nanosecond 
-	  timing API. Replaces the PIT timer.
 
 menu "ATA / Disk"
 
@@ -128,6 +128,36 @@ config TEST_ATA_DRIVE
 	  a small raw disk image, attach it as a secondary IDE drive,
 	  and delete it when QEMU exits. Useful for testing ATA and
 	  partition code against a real (emulated) disk.
+
+endmenu
+
+menu "SATA / AHCI"
+
+config AHCI
+	bool "AHCI controller driver"
+	default n
+	depends on PCI
+	help
+	  AHCI (Advanced Host Controller Interface) driver.
+	  Provides DMA-based access to SATA ports via PCI BAR5.
+	  Required by the SATA device driver.
+
+config SATA
+	bool "SATA device driver"
+	default n
+	depends on AHCI
+	help
+	  SATA device detection, IDENTIFY, and DMA read/write.
+	  Provides struct blkdev for each attached SATA disk.
+
+config TEST_SATA_DRIVE
+	bool "Create temporary SATA disk for QEMU testing"
+	default n
+	depends on SATA
+	help
+	  When enabled, the QEMU run targets will automatically create
+	  an 8 MB raw disk image, attach it as a SATA drive on the Q35
+	  ICH9-AHCI controller, and delete the image when QEMU exits.
 
 endmenu
 

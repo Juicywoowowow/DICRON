@@ -65,7 +65,7 @@ void swap_init(struct blkdev *disk) {
   swap_bitmap = 0;
   swap_disk_enabled = 1;
 
-  klog(KLOG_INFO, "swap: disk swap enabled — %d slots at block %llu\n",
+  klog(KLOG_DEBUG, "swap: disk swap enabled — %d slots at block %llu\n",
        SWAP_MAX_SLOTS, (unsigned long long)swap_start_block);
 }
 

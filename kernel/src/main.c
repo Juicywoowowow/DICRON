@@ -9,7 +9,7 @@
 #include "drivers/serial/com.h"
 #include "drivers/ps2/kbd.h"
 #include "drivers/timer/pit.h"
-#include "drivers/new/hpet/hpet.h"
+#include "drivers/hpet/hpet.h"
 #include "drivers/timer/rtc.h"
 #ifdef CONFIG_PCI
 #include "drivers/pci/pci.h"
@@ -25,6 +25,17 @@
 #include <dicron/blkdev.h>
 #ifdef CONFIG_EXT2
 #include "drivers/ext2/ext2.h"
+#endif
+#endif
+#ifdef CONFIG_SATA
+#include "drivers/new/sata/sata.h"
+#ifndef CONFIG_ATA
+#include <dicron/blkdev.h>
+#endif
+#ifdef CONFIG_EXT2
+#ifndef CONFIG_ATA
+#include "drivers/ext2/ext2.h"
+#endif
 #endif
 #endif
 #ifdef CONFIG_SWAP
@@ -149,6 +160,9 @@ void kmain(void)
 #ifdef CONFIG_ATA
 	ata_init();
 #endif
+#ifdef CONFIG_SATA
+	sata_init();
+#endif
 	syscall_init();
 	syscall_table_init();
 	vfs_init();
@@ -201,6 +215,10 @@ void kmain(void)
 			struct ata_drive *drv = ata_get_drive(0);
 			swap_blkdev = ata_blkdev_create(drv);
 		}
+#endif
+#ifdef CONFIG_SATA
+		if (!swap_blkdev && sata_drive_count() > 0)
+			swap_blkdev = sata_blkdev_create(sata_get_drive(0));
 #endif
 		swap_init(swap_blkdev);
 	}

@@ -94,7 +94,7 @@ int uaccess_valid_string(const char *str, size_t max_len)
 int copy_from_user(void *dst, const void *user_src, size_t len)
 {
 	if (!uaccess_valid(user_src, len)) {
-		klog(KLOG_ERR, "uaccess: bad copy_from_user ptr=%p len=%lu\n",
+		klog(KLOG_DEBUG, "uaccess: bad copy_from_user ptr=%p len=%lu\n",
 		     user_src, len);
 		return -14; /* -EFAULT */
 	}
@@ -106,7 +106,7 @@ int copy_from_user(void *dst, const void *user_src, size_t len)
 int copy_to_user(void *user_dst, const void *src, size_t len)
 {
 	if (!uaccess_valid(user_dst, len)) {
-		klog(KLOG_ERR, "uaccess: bad copy_to_user ptr=%p len=%lu\n",
+		klog(KLOG_DEBUG, "uaccess: bad copy_to_user ptr=%p len=%lu\n",
 		     user_dst, len);
 		return -14; /* -EFAULT */
 	}

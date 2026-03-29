@@ -135,5 +135,5 @@ void ext2_sync_unmount(struct ext2_fs *fs)
 	fs->sb.s_wtime = (uint32_t)rtc_unix_time();
 	ext2_write_superblock(fs);
 
-	klog(KLOG_INFO, "ext2: clean unmount complete\n");
+	klog(KLOG_DEBUG, "ext2: clean unmount complete\n");
 }

@@ -111,7 +111,7 @@ int ext2_vfs_mount(struct ext2_fs *fs, const char *mountpoint)
 		mp->i_private = root->i_private;
 		mp->mode = root->mode;
 		mp->size = root->size;
-		klog(KLOG_INFO, "ext2: mounted at %s\n", mountpoint);
+		klog(KLOG_DEBUG, "ext2: mounted at %s\n", mountpoint);
 	}
 
 	return 0;

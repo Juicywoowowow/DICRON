@@ -71,7 +71,7 @@ struct ext2_fs *ext2_mount(struct blkdev *dev)
 		}
 	}
 
-	klog(KLOG_INFO, "ext2: mounted — %u blocks, %u inodes, "
+	klog(KLOG_DEBUG, "ext2: mounted — %u blocks, %u inodes, "
 	     "block_size=%u, %u groups\n",
 	     fs->sb.s_blocks_count, fs->sb.s_inodes_count,
 	     fs->block_size, fs->groups_count);

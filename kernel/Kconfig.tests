@@ -156,6 +156,27 @@ config TESTS_VIRTIO_BLK
 	  Tests for virtio-blk device enumeration, blkdev field validation,
 	  capacity reporting, bounds checking, and null-input error handling.
 
+menu "SATA tests"
+	depends on SATA
+
+config TESTS_AHCI
+	bool "AHCI controller tests"
+	default y
+	depends on AHCI
+	help
+	  Tests for AHCI PCI detection, HBA version, port count,
+	  and AHCI mode enable.
+
+config TESTS_SATA
+	bool "SATA device tests"
+	default y
+	depends on SATA
+	help
+	  Tests for SATA device IDENTIFY, read, write, readback,
+	  blkdev wrapper, and port transitions.
+
+endmenu
+
 endmenu
 
 menu "Post-boot test categories"

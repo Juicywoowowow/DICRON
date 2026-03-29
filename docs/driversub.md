@@ -165,7 +165,7 @@ graduation review. Check the listed blockers before performing the move.
 
 | Driver | Folder | Flagged | Blockers before Stable |
 |---|---|---|---|
-| HPET | `drivers/new/hpet/` | 2026-03-27 | (1) `ktime_ms`/`ksleep_ms` live behind `#ifndef CONFIG_PIT` inside the driver — needs a time-abstraction layer instead. (2) `acpi_hpet_table` struct defined in `hpet.c` — move to shared ACPI header when ACPI subsystem matures. (3) Only one MMIO page mapped — guard against multi-page register space. (4) Tests reach into `hpet_internal.h` directly — expose an accessor instead. |
+| HPET | `drivers/hpet/` | 2026-03-27 → **Promoted 2026-03-29** | All blockers resolved. |
 
 ---
 
