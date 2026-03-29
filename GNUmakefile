@@ -385,9 +385,10 @@ ifdef CONFIG_TEST_SATA_DRIVE
 	@echo "  SATA-IMG $(TEST_SATA_IMG) cleaned up"
 endif
 
-# ── CI run: inject isa-debug-exit + -DCONFIG_QEMU_CI_EXIT, then check exit 33 ──
+# ── CI run: isa-debug-exit device, then check exit 33 ──
 # QEMU writes (value<<1)|1 on port 0xf4.  We write 0x10 → exit 33 = success.
-ci-run: CFLAGS += -DCONFIG_QEMU_CI_EXIT
+# CONFIG_QEMU_CI_EXIT must be enabled in Kconfig (default y) so the kernel
+# actually calls qemu_exit().  Run 'make oldconfig' after changing Kconfig.
 ci-run: iso test-ata-img test-virtio-img test-sata-img
 	qemu-system-x86_64 \
 		-M q35 \
